@@ -1,5 +1,9 @@
 package com.example.dacs3.ui.auth
 
+// Thêm 2 dòng import này để xài tính năng cuộn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -32,6 +36,9 @@ fun LoginScreen(
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
 
+    // Khai báo biến quản lý trạng thái cuộn
+    val scrollState = rememberScrollState()
+
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = AppLightGray
@@ -39,6 +46,9 @@ fun LoginScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .systemBarsPadding() // Tránh tai thỏ và thanh điều hướng
+                .imePadding()        // Tự đẩy giao diện lên khi bật bàn phím
+                .verticalScroll(scrollState) // Cho phép màn hình cuộn lên xuống
                 .padding(horizontal = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -187,7 +197,8 @@ fun LoginScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.weight(1f))
+            // Đổi fill = false để không bị lỗi UI khi nằm trong một layout có thể cuộn
+            Spacer(modifier = Modifier.weight(1f, fill = false))
 
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("Don't have an account? ", color = TextGray, fontSize = 14.sp)

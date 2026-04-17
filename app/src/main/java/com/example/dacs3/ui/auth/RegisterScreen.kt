@@ -1,4 +1,5 @@
 package com.example.dacs3.ui.auth
+
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -28,7 +29,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-val InputBgGray = Color(0xFFF3F4F6)
+private val InputBgGray = Color(0xFFF3F4F6)
 
 @Composable
 fun RegisterScreen(
@@ -50,8 +51,10 @@ fun RegisterScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .systemBarsPadding()
+                .imePadding()
                 .verticalScroll(scrollState)
-                .padding(horizontal = 24.dp, vertical = 32.dp),
+                .padding(horizontal = 24.dp, vertical = 24.dp),
             horizontalAlignment = Alignment.Start
         ) {
 
@@ -151,6 +154,7 @@ fun RegisterScreen(
                 Text("Create Account", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
             }
 
+            Spacer(modifier = Modifier.weight(1f, fill = false))
             Spacer(modifier = Modifier.height(24.dp))
 
             Row(
