@@ -1,6 +1,5 @@
 package com.example.dacs3.ui.auth
 
-// Thêm 2 dòng import này để xài tính năng cuộn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 
@@ -46,9 +45,9 @@ fun LoginScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .systemBarsPadding() // Tránh tai thỏ và thanh điều hướng
-                .imePadding()        // Tự đẩy giao diện lên khi bật bàn phím
-                .verticalScroll(scrollState) // Cho phép màn hình cuộn lên xuống
+                .systemBarsPadding()
+                .imePadding()
+                .verticalScroll(scrollState)
                 .padding(horizontal = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
