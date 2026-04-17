@@ -2,13 +2,11 @@ package com.example.dacs3.ui.auth
 
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
@@ -30,12 +28,14 @@ val TextGray = Color(0xFF6B7280)
 @Composable
 fun LoginScreen(
     onLoginClick: () -> Unit = {},
-    onSignUpClick: () -> Unit = {}
+    onSignUpClick: () -> Unit = {},
+    // THÊM 2 THAM SỐ BẮT SỰ KIỆN CLICK
+    onGoogleClick: () -> Unit = {},
+    onAppleClick: () -> Unit = {}
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
 
-    // Khai báo biến quản lý trạng thái cuộn
     val scrollState = rememberScrollState()
 
     Surface(
@@ -168,7 +168,6 @@ fun LoginScreen(
 
             Spacer(modifier = Modifier.height(40.dp))
 
-            // --- Community Access (Social Login) ---
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                 HorizontalDivider(modifier = Modifier.weight(1f), color = Color.LightGray.copy(alpha = 0.5f))
                 Text(" COMMUNITY ACCESS ", fontSize = 10.sp, color = TextGray, letterSpacing = 1.sp)
@@ -177,26 +176,32 @@ fun LoginScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
+            // --- NÚT ĐĂNG NHẬP MẠNG XÃ HỘI ---
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 Button(
-                    onClick = { /* Google Login */ },
+                    onClick = onGoogleClick,
                     modifier = Modifier.weight(1f).height(50.dp),
                     shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.White)
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color.White,
+                        contentColor = Color.Black // Thêm màu content để có hiệu ứng gợn sóng đen
+                    )
                 ) {
-                    Text("Google", color = Color.Black, fontWeight = FontWeight.SemiBold)
+                    Text("Google", fontWeight = FontWeight.SemiBold)
                 }
                 Button(
-                    onClick = { /* Apple Login */ },
+                    onClick = onAppleClick,
                     modifier = Modifier.weight(1f).height(50.dp),
                     shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.White)
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color.White,
+                        contentColor = Color.Black // Thêm màu content để có hiệu ứng gợn sóng đen
+                    )
                 ) {
-                    Text("Apple", color = Color.Black, fontWeight = FontWeight.SemiBold)
+                    Text("Apple", fontWeight = FontWeight.SemiBold)
                 }
             }
 
-            // Đổi fill = false để không bị lỗi UI khi nằm trong một layout có thể cuộn
             Spacer(modifier = Modifier.weight(1f, fill = false))
 
             Row(verticalAlignment = Alignment.CenterVertically) {

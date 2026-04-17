@@ -29,12 +29,15 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
+// Mình đã thêm lại 2 màu này để code không bị báo đỏ
 private val InputBgGray = Color(0xFFF3F4F6)
 
 @Composable
 fun RegisterScreen(
     onRegisterClick: () -> Unit = {},
-    onSignInClick: () -> Unit = {}
+    onSignInClick: () -> Unit = {},
+    onGoogleClick: () -> Unit = {},
+    onAppleClick: () -> Unit = {}
 ) {
     var fullName by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
@@ -83,22 +86,32 @@ fun RegisterScreen(
 
             Spacer(modifier = Modifier.height(32.dp))
 
+            // --- NÚT ĐĂNG NHẬP MẠNG XÃ HỘI ---
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 Button(
-                    onClick = { /* Google Register */ },
+                    onClick = onGoogleClick,
                     modifier = Modifier.weight(1f).height(50.dp),
                     shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = InputBgGray)
+                    // Thêm contentColor = Color.Black để có hiệu ứng nhấn gợn sóng đen đậm
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = InputBgGray,
+                        contentColor = Color.Black
+                    )
                 ) {
-                    Text("Google", color = Color.Black, fontWeight = FontWeight.SemiBold)
+                    Text("Google", fontWeight = FontWeight.SemiBold)
                 }
+
                 Button(
-                    onClick = { /* Apple Register */ },
+                    onClick = onAppleClick,
                     modifier = Modifier.weight(1f).height(50.dp),
                     shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = InputBgGray)
+                    // Thêm contentColor = Color.Black để có hiệu ứng nhấn gợn sóng đen đậm
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = InputBgGray,
+                        contentColor = Color.Black
+                    )
                 ) {
-                    Text("Apple", color = Color.Black, fontWeight = FontWeight.SemiBold)
+                    Text("Apple", fontWeight = FontWeight.SemiBold)
                 }
             }
 
