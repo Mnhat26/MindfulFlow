@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "68592486704",
+    "project_id": "mindfulflow-2ffa0",
+    "storage_bucket": "mindfulflow-2ffa0.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:68592486704:android:03c8b0a3e57017784360f5",
+        "android_client_info": {
+          "package_name": "com.example.dacs3"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "68592486704-tu4lc0cgfvf7o8p7i3qq16v5chnvmk2m.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.dacs3",
+            "certificate_hash": "fbd55cfb73d8dc168e509e8ffd19a746d2abee33"
+          }
+        },
+        {
+          "client_id": "68592486704-vu5vrp5rjk5g4v4ioiq5dkpvknkm53hv.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDgNqaBLTRljyP8XXcDr9zXSk6MHkqjm9s"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "68592486704-vu5vrp5rjk5g4v4ioiq5dkpvknkm53hv.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

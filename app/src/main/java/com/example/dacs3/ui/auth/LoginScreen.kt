@@ -1,5 +1,8 @@
 package com.example.dacs3.ui.auth
 
+import android.app.Activity
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
@@ -14,12 +17,19 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.dacs3.R
+import com.example.dacs3.viewmodel.AuthViewModel
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.api.ApiException
 
 val AppNavy = Color(0xFF060B26)
 val AppLightGray = Color(0xFFF5F7FA)
@@ -27,16 +37,28 @@ val TextGray = Color(0xFF6B7280)
 
 @Composable
 fun LoginScreen(
-    onLoginClick: () -> Unit = {},
+    viewModel: AuthViewModel = viewModel(),
     onSignUpClick: () -> Unit = {},
-    // THÊM 2 THAM SỐ BẮT SỰ KIỆN CLICK
     onGoogleClick: () -> Unit = {},
-    onAppleClick: () -> Unit = {}
 ) {
-    var email by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-
     val scrollState = rememberScrollState()
+
+    val context = LocalContext.current
+    val activity = context as? Activity
+
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+            try {
+                val account = task.getResult(ApiException::class.java)
+                account?.idToken?.let { viewModel.onGoogleLogin(it) }
+            } catch (e: Exception) {
+                viewModel.errorMessage = "Google Sign-In failed: ${e.localizedMessage}"
+            }
+        }
+    }
 
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -93,9 +115,8 @@ fun LoginScreen(
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 TextField(
-                    value = email,
-                    onValueChange = { email = it },
-                    placeholder = { Text("alex@deepwork.com", color = Color.LightGray) },
+                    value = viewModel.email,
+                    onValueChange = { viewModel.email = it },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
                     colors = TextFieldDefaults.colors(
@@ -133,9 +154,8 @@ fun LoginScreen(
                 }
                 Spacer(modifier = Modifier.height(8.dp))
                 TextField(
-                    value = password,
-                    onValueChange = { password = it },
-                    placeholder = { Text("••••••••", color = Color.LightGray) },
+                    value = viewModel.password,
+                    onValueChange = { viewModel.password = it },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
                     colors = TextFieldDefaults.colors(
@@ -151,19 +171,33 @@ fun LoginScreen(
                 )
             }
 
+            viewModel.errorMessage?.let {
+                Text(
+                    text = it,
+                    color = Color.Red,
+                    fontSize = 12.sp,
+                    modifier = Modifier.padding(top = 8.dp).align(Alignment.Start)
+                )
+            }
+
             Spacer(modifier = Modifier.height(32.dp))
 
             Button(
-                onClick = onLoginClick,
+                onClick = { viewModel.onLogin() },
+                enabled = !viewModel.isLoading,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = AppNavy)
             ) {
-                Text("Enter Flow State", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
-                Spacer(modifier = Modifier.width(8.dp))
-                Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
+                if (viewModel.isLoading) {
+                    CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
+                } else {
+                    Text("Enter Flow State", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
+                }
             }
 
             Spacer(modifier = Modifier.height(40.dp))
@@ -176,30 +210,27 @@ fun LoginScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // --- NÚT ĐĂNG NHẬP MẠNG XÃ HỘI ---
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 Button(
-                    onClick = onGoogleClick,
+                    onClick = {
+                        onGoogleClick()
+                        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                            .requestIdToken(context.getString(R.string.default_web_client_id))
+                            .requestEmail()
+                            .build()
+                        val googleSignInClient = GoogleSignIn.getClient(context, gso)
+                        launcher.launch(googleSignInClient.signInIntent)
+                    },
                     modifier = Modifier.weight(1f).height(50.dp),
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Color.White,
-                        contentColor = Color.Black // Thêm màu content để có hiệu ứng gợn sóng đen
+                        contentColor = Color.Black
                     )
                 ) {
                     Text("Google", fontWeight = FontWeight.SemiBold)
                 }
-                Button(
-                    onClick = onAppleClick,
-                    modifier = Modifier.weight(1f).height(50.dp),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.White,
-                        contentColor = Color.Black // Thêm màu content để có hiệu ứng gợn sóng đen
-                    )
-                ) {
-                    Text("Apple", fontWeight = FontWeight.SemiBold)
-                }
+
             }
 
             Spacer(modifier = Modifier.weight(1f, fill = false))

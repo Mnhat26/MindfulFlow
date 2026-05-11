@@ -1,5 +1,8 @@
 package com.example.dacs3.ui.auth
 
+import android.app.Activity
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -18,6 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -28,24 +32,39 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.dacs3.R
+import com.example.dacs3.viewmodel.AuthViewModel
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.api.ApiException
 
-// Mình đã thêm lại 2 màu này để code không bị báo đỏ
 private val InputBgGray = Color(0xFFF3F4F6)
 
 @Composable
 fun RegisterScreen(
-    onRegisterClick: () -> Unit = {},
+    viewModel: AuthViewModel = viewModel(),
     onSignInClick: () -> Unit = {},
-    onGoogleClick: () -> Unit = {},
-    onAppleClick: () -> Unit = {}
+    onGoogleClick: () -> Unit = {}
 ) {
-    var fullName by remember { mutableStateOf("") }
-    var email by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    var confirmPassword by remember { mutableStateOf("") }
     var isAgreed by remember { mutableStateOf(false) }
 
     val scrollState = rememberScrollState()
+
+    val context = LocalContext.current
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+            try {
+                val account = task.getResult(ApiException::class.java)
+                account?.idToken?.let { viewModel.onGoogleLogin(it) }
+            } catch (e: Exception) {
+                viewModel.errorMessage = "Google Sign-In failed: ${e.localizedMessage}"
+            }
+        }
+    }
 
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -60,7 +79,6 @@ fun RegisterScreen(
                 .padding(horizontal = 24.dp, vertical = 24.dp),
             horizontalAlignment = Alignment.Start
         ) {
-
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
                     imageVector = Icons.Default.Star,
@@ -86,33 +104,24 @@ fun RegisterScreen(
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // --- NÚT ĐĂNG NHẬP MẠNG XÃ HỘI ---
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                Button(
-                    onClick = onGoogleClick,
-                    modifier = Modifier.weight(1f).height(50.dp),
-                    shape = RoundedCornerShape(12.dp),
-                    // Thêm contentColor = Color.Black để có hiệu ứng nhấn gợn sóng đen đậm
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = InputBgGray,
-                        contentColor = Color.Black
-                    )
-                ) {
-                    Text("Google", fontWeight = FontWeight.SemiBold)
-                }
-
-                Button(
-                    onClick = onAppleClick,
-                    modifier = Modifier.weight(1f).height(50.dp),
-                    shape = RoundedCornerShape(12.dp),
-                    // Thêm contentColor = Color.Black để có hiệu ứng nhấn gợn sóng đen đậm
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = InputBgGray,
-                        contentColor = Color.Black
-                    )
-                ) {
-                    Text("Apple", fontWeight = FontWeight.SemiBold)
-                }
+            Button(
+                onClick = {
+                    onGoogleClick()
+                    val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                        .requestIdToken(context.getString(R.string.default_web_client_id))
+                        .requestEmail()
+                        .build()
+                    val googleSignInClient = GoogleSignIn.getClient(context, gso)
+                    launcher.launch(googleSignInClient.signInIntent)
+                },
+                modifier = Modifier.fillMaxWidth().height(50.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = InputBgGray,
+                    contentColor = Color.Black
+                )
+            ) {
+                Text("Continue with Google", fontWeight = FontWeight.SemiBold)
             }
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -125,16 +134,34 @@ fun RegisterScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            AuthTextField("FULL NAME", fullName, { fullName = it }, "Alex Rivers", Icons.Outlined.Person)
+            AuthTextField(
+                label = "FULL NAME",
+                value = viewModel.fullName,
+                onValueChange = { viewModel.fullName = it },
+                placeholder = "Alex Rivers",
+                icon = Icons.Outlined.Person
+            )
+
             Spacer(modifier = Modifier.height(16.dp))
-            AuthTextField("EMAIL ADDRESS", email, { email = it }, "alex@flow.com", Icons.Outlined.Email, keyboardType = KeyboardType.Email)
+            AuthTextField("EMAIL ADDRESS", viewModel.email, { viewModel.email = it }, "alex@flow.com", Icons.Outlined.Email, keyboardType = KeyboardType.Email)
             Spacer(modifier = Modifier.height(16.dp))
-            AuthTextField("PASSWORD", password, { password = it }, "••••••••", Icons.Outlined.Lock, isPassword = true)
+            AuthTextField("PASSWORD", viewModel.password, { viewModel.password = it }, "••••••••", Icons.Outlined.Lock, isPassword = true)
             Spacer(modifier = Modifier.height(16.dp))
-            AuthTextField("CONFIRM", confirmPassword, { confirmPassword = it }, "••••••••", Icons.Default.CheckCircle, isPassword = true)
+            AuthTextField("CONFIRM", viewModel.confirmPassword, { viewModel.confirmPassword = it }, "••••••••", Icons.Default.CheckCircle, isPassword = true)
+
+            // HIỂN THỊ LỖI (GIỮ NGUYÊN)
+            viewModel.errorMessage?.let {
+                Text(
+                    text = it,
+                    color = Color.Red,
+                    fontSize = 12.sp,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+            }
 
             Spacer(modifier = Modifier.height(24.dp))
 
+            // --- CHECKBOX (GIỮ NGUYÊN) ---
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Checkbox(
                     checked = isAgreed,
@@ -159,12 +186,23 @@ fun RegisterScreen(
             Spacer(modifier = Modifier.height(32.dp))
 
             Button(
-                onClick = onRegisterClick,
+                onClick = {
+                    if (!isAgreed) {
+                        viewModel.errorMessage = "Vui lòng đồng ý với Điều khoản dịch vụ!"
+                    } else {
+                        viewModel.onRegister()
+                    }
+                },
+                enabled = !viewModel.isLoading,
                 modifier = Modifier.fillMaxWidth().height(56.dp),
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = AppNavy)
             ) {
-                Text("Create Account", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
+                if (viewModel.isLoading) {
+                    CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
+                } else {
+                    Text("Create Account", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
+                }
             }
 
             Spacer(modifier = Modifier.weight(1f, fill = false))
