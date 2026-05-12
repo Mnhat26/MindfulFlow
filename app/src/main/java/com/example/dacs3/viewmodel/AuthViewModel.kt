@@ -83,4 +83,13 @@ class AuthViewModel : ViewModel() {
             }
         }
     }
+    fun resetAuthState() {
+        fullName = ""
+        email = ""
+        password = ""
+        confirmPassword = ""
+        isLoading = false
+        errorMessage = null
+        isAuthSuccess = false
+    }
 }
