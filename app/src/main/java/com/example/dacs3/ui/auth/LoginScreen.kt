@@ -44,16 +44,19 @@ fun LoginScreen(
     val scrollState = rememberScrollState()
 
     val context = LocalContext.current
-    val activity = context as? Activity
 
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
             val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+
             try {
                 val account = task.getResult(ApiException::class.java)
-                account?.idToken?.let { viewModel.onGoogleLogin(it) }
+
+                account?.idToken?.let { idToken ->
+                    viewModel.onGoogleLogin(idToken)
+                }
             } catch (e: Exception) {
                 viewModel.errorMessage = "Google Sign-In failed: ${e.localizedMessage}"
             }
@@ -96,7 +99,9 @@ fun LoginScreen(
                 fontWeight = FontWeight.Bold,
                 color = AppNavy
             )
+
             Spacer(modifier = Modifier.height(8.dp))
+
             Text(
                 text = "Welcome back to your sanctuary of focus.",
                 fontSize = 14.sp,
@@ -113,10 +118,14 @@ fun LoginScreen(
                     color = AppNavy,
                     letterSpacing = 1.sp
                 )
+
                 Spacer(modifier = Modifier.height(8.dp))
+
                 TextField(
                     value = viewModel.email,
-                    onValueChange = { viewModel.email = it },
+                    onValueChange = {
+                        viewModel.email = it
+                    },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
                     colors = TextFieldDefaults.colors(
@@ -125,9 +134,18 @@ fun LoginScreen(
                         focusedIndicatorColor = Color.Transparent,
                         unfocusedIndicatorColor = Color.Transparent
                     ),
-                    trailingIcon = { Text("@", color = Color.LightGray, fontSize = 20.sp, modifier = Modifier.padding(end = 12.dp)) },
+                    trailingIcon = {
+                        Text(
+                            text = "@",
+                            color = Color.LightGray,
+                            fontSize = 20.sp,
+                            modifier = Modifier.padding(end = 12.dp)
+                        )
+                    },
                     singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Email
+                    )
                 )
             }
 
@@ -145,6 +163,7 @@ fun LoginScreen(
                         color = AppNavy,
                         letterSpacing = 1.sp
                     )
+
                     Text(
                         text = "Forgot Password?",
                         fontSize = 12.sp,
@@ -152,10 +171,14 @@ fun LoginScreen(
                         color = AppNavy
                     )
                 }
+
                 Spacer(modifier = Modifier.height(8.dp))
+
                 TextField(
                     value = viewModel.password,
-                    onValueChange = { viewModel.password = it },
+                    onValueChange = {
+                        viewModel.password = it
+                    },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
                     colors = TextFieldDefaults.colors(
@@ -164,81 +187,153 @@ fun LoginScreen(
                         focusedIndicatorColor = Color.Transparent,
                         unfocusedIndicatorColor = Color.Transparent
                     ),
-                    trailingIcon = { Icon(Icons.Default.Lock, contentDescription = null, tint = Color.LightGray) },
+                    trailingIcon = {
+                        Icon(
+                            imageVector = Icons.Default.Lock,
+                            contentDescription = null,
+                            tint = Color.LightGray
+                        )
+                    },
                     visualTransformation = PasswordVisualTransformation(),
                     singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Password
+                    )
                 )
             }
 
-            viewModel.errorMessage?.let {
+            viewModel.errorMessage?.let { message ->
                 Text(
-                    text = it,
+                    text = message,
                     color = Color.Red,
                     fontSize = 12.sp,
-                    modifier = Modifier.padding(top = 8.dp).align(Alignment.Start)
+                    modifier = Modifier
+                        .padding(top = 8.dp)
+                        .align(Alignment.Start)
                 )
             }
 
             Spacer(modifier = Modifier.height(32.dp))
 
             Button(
-                onClick = { viewModel.onLogin() },
+                onClick = {
+                    viewModel.onLogin()
+                },
                 enabled = !viewModel.isLoading,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
                 shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = AppNavy)
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = AppNavy
+                )
             ) {
                 if (viewModel.isLoading) {
-                    CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
+                    CircularProgressIndicator(
+                        color = Color.White,
+                        modifier = Modifier.size(24.dp)
+                    )
                 } else {
-                    Text("Enter Flow State", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
+                    Text(
+                        text = "Enter Flow State",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.White
+                    )
+
                     Spacer(modifier = Modifier.width(8.dp))
-                    Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
+
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(20.dp)
+                    )
                 }
             }
 
             Spacer(modifier = Modifier.height(40.dp))
 
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                HorizontalDivider(modifier = Modifier.weight(1f), color = Color.LightGray.copy(alpha = 0.5f))
-                Text(" COMMUNITY ACCESS ", fontSize = 10.sp, color = TextGray, letterSpacing = 1.sp)
-                HorizontalDivider(modifier = Modifier.weight(1f), color = Color.LightGray.copy(alpha = 0.5f))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                HorizontalDivider(
+                    modifier = Modifier.weight(1f),
+                    color = Color.LightGray.copy(alpha = 0.5f)
+                )
+
+                Text(
+                    text = " COMMUNITY ACCESS ",
+                    fontSize = 10.sp,
+                    color = TextGray,
+                    letterSpacing = 1.sp
+                )
+
+                HorizontalDivider(
+                    modifier = Modifier.weight(1f),
+                    color = Color.LightGray.copy(alpha = 0.5f)
+                )
             }
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
                 Button(
                     onClick = {
                         onGoogleClick()
-                        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+
+                        val gso = GoogleSignInOptions.Builder(
+                            GoogleSignInOptions.DEFAULT_SIGN_IN
+                        )
                             .requestIdToken(context.getString(R.string.default_web_client_id))
                             .requestEmail()
                             .build()
+
                         val googleSignInClient = GoogleSignIn.getClient(context, gso)
-                        launcher.launch(googleSignInClient.signInIntent)
+
+                        googleSignInClient.signOut().addOnCompleteListener {
+                            launcher.launch(googleSignInClient.signInIntent)
+                        }
                     },
-                    modifier = Modifier.weight(1f).height(50.dp),
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(50.dp),
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Color.White,
                         contentColor = Color.Black
                     )
                 ) {
-                    Text("Google", fontWeight = FontWeight.SemiBold)
+                    Text(
+                        text = "Google",
+                        fontWeight = FontWeight.SemiBold
+                    )
                 }
-
             }
 
             Spacer(modifier = Modifier.weight(1f, fill = false))
 
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Don't have an account? ", color = TextGray, fontSize = 14.sp)
-                TextButton(onClick = onSignUpClick, contentPadding = PaddingValues(0.dp)) {
-                    Text("Sign Up", color = AppNavy, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                Text(
+                    text = "Don't have an account? ",
+                    color = TextGray,
+                    fontSize = 14.sp
+                )
+
+                TextButton(
+                    onClick = onSignUpClick,
+                    contentPadding = PaddingValues(0.dp)
+                ) {
+                    Text(
+                        text = "Sign Up",
+                        color = AppNavy,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp
+                    )
                 }
             }
 
@@ -249,10 +344,25 @@ fun LoginScreen(
                 shape = RoundedCornerShape(16.dp),
                 modifier = Modifier.padding(bottom = 32.dp)
             ) {
-                Row(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Lock, contentDescription = null, tint = Color(0xFF2E7D32), modifier = Modifier.size(12.dp))
+                Row(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Lock,
+                        contentDescription = null,
+                        tint = Color(0xFF2E7D32),
+                        modifier = Modifier.size(12.dp)
+                    )
+
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("SECURE SESSION ENCRYPTED", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = AppNavy)
+
+                    Text(
+                        text = "SECURE SESSION ENCRYPTED",
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = AppNavy
+                    )
                 }
             }
         }
