@@ -14,3 +14,4 @@ data class TimerPreset(
 ) {
     constructor() : this(0L, "New Preset", 25, 5, "#3F51B5")
 }
+//
