@@ -4,6 +4,15 @@ plugins {
     id("com.google.gms.google-services")
 }
 
+import java.util.Properties
+
+val localProps = Properties().apply {
+    val file = rootProject.file("local.properties")
+    if (file.exists()) {
+        file.inputStream().use { load(it) }
+    }
+}
+
 android {
     namespace = "com.example.dacs3"
     compileSdk {
@@ -18,6 +27,14 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        val supabaseUrl = localProps.getProperty("SUPABASE_URL", "")
+        val supabaseAnonKey = localProps.getProperty("SUPABASE_ANON_KEY", "")
+        val supabaseBucketName = localProps.getProperty("SUPABASE_BUCKET_NAME", "")
+
+        buildConfigField("String", "SUPABASE_URL", "\"$supabaseUrl\"")
+        buildConfigField("String", "SUPABASE_ANON_KEY", "\"$supabaseAnonKey\"")
+        buildConfigField("String", "SUPABASE_BUCKET_NAME", "\"$supabaseBucketName\"")
     }
 
     buildTypes {
@@ -35,6 +52,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -61,4 +79,6 @@ dependencies {
     implementation("com.google.firebase:firebase-firestore-ktx")
     implementation("com.google.android.gms:play-services-auth:21.1.1")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
+    implementation("androidx.compose.material3:material3:1.2.1")
+    implementation("io.coil-kt:coil-compose:2.6.0")
 }

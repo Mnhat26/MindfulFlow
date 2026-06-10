@@ -17,11 +17,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.*
 import com.example.dacs3.model.TimerPreset
+import com.example.dacs3.ui.theme.AppNavy
+import com.example.dacs3.ui.theme.BgLight
+import androidx.core.graphics.toColorInt
+import java.util.Locale
 
 fun String.toComposeColor(): Color {
     return try {
-        Color(android.graphics.Color.parseColor(this))
-    } catch (e: Exception) {
+        Color(this.toColorInt())
+    } catch (_: Exception) {
         Color(0xFF3F51B5)
     }
 }
@@ -43,7 +47,6 @@ fun TimerPresetsScreen(
 
     Scaffold(
         containerColor = BgLight,
-        bottomBar = { BottomNavigationBar() }
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -58,15 +61,14 @@ fun TimerPresetsScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = onBackClick) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = AppNavy)
-                    }
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Mindful Flow", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = AppNavy)
+                IconButton(onClick = onBackClick) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = AppNavy)
                 }
+                
+                Text(text = "Mindful Flow", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = AppNavy)
+                
                 Surface(color = AppNavy, shape = CircleShape, modifier = Modifier.size(36.dp)) {
-                    Icon(Icons.Default.Person, contentDescription = "User Avatar", tint = Color.White, modifier = Modifier.padding(6.dp))
+                    Icon(Icons.Default.Person, contentDescription = null, tint = Color.White, modifier = Modifier.padding(6.dp))
                 }
             }
 
@@ -223,7 +225,7 @@ fun PresetCard(
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Text("FOCUS", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = PresetTextGray)
                     Surface(color = PresetLightGrayBg, shape = RoundedCornerShape(8.dp)) {
-                        Text(String.format("%02d:00", preset.focusMin), fontSize = 16.sp, fontWeight = FontWeight.Bold, color = AppNavy, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+                        Text(String.format(Locale.US, "%02d:00", preset.focusMin), fontSize = 16.sp, fontWeight = FontWeight.Bold, color = AppNavy, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
                     }
                 }
                 Spacer(modifier = Modifier.height(12.dp))
@@ -249,4 +251,3 @@ fun PresetCard(
         }
     }
 }
-//
