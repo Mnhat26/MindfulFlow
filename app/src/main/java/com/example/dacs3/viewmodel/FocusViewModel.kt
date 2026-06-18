@@ -1,8 +1,14 @@
 package com.example.dacs3.viewmodel
 
 import android.app.Application
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.media.RingtoneManager
+import android.os.Build
 import androidx.compose.runtime.*
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.dacs3.data.AuthRepository
@@ -11,8 +17,8 @@ import com.example.dacs3.data.repository.HistoryRepository
 import com.example.dacs3.data.repository.PresetRepository
 import com.example.dacs3.data.repository.UserRepository
 import com.example.dacs3.model.TimerPreset
+import com.example.dacs3.service.TimerService
 import com.google.firebase.auth.FirebaseAuth
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.File
@@ -24,9 +30,6 @@ class FocusViewModel(application: Application) : AndroidViewModel(application) {
     private val userRepository = UserRepository()
     private val authRepository = AuthRepository()
     private val preferenceManager = PreferenceManager(application)
-
-    private var timerJob: Job? = null
-    private var secondsTracked = 0 
 
     var userName by mutableStateOf("Loading...")
         private set
@@ -58,10 +61,17 @@ class FocusViewModel(application: Application) : AndroidViewModel(application) {
     var currentPreset by mutableStateOf<TimerPreset?>(null)
         private set
 
+    // --- BIẾN ĐỒNG BỘ VỚI TIMER MANAGER ---
     var isFocusMode by mutableStateOf(true)
         private set
 
     var totalFocusSeconds by mutableIntStateOf(25 * 60)
+        private set
+
+    var totalFocusMinutes by mutableIntStateOf(0)
+        private set
+
+    var totalDeepWorkFormatted by mutableStateOf("00:00")
         private set
 
     var timeLeft by mutableIntStateOf(25 * 60)
@@ -82,6 +92,15 @@ class FocusViewModel(application: Application) : AndroidViewModel(application) {
     var selectedSoundUri by mutableStateOf(preferenceManager.selectedSoundUri)
         private set
 
+    // --- BỘ THU TÍN HIỆU TỪ TIMER SERVICE (ĐỂ REO CHUÔNG) ---
+    private val timerFinishedReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action == "com.example.dacs3.TIMER_FINISHED") {
+                playNotificationSound()
+            }
+        }
+    }
+
     fun toggleNotificationSound(enabled: Boolean) {
         isNotificationSoundEnabled = enabled
         preferenceManager.isNotificationSoundEnabled = enabled
@@ -90,7 +109,6 @@ class FocusViewModel(application: Application) : AndroidViewModel(application) {
     fun setSelectedSound(uri: String?) {
         selectedSoundUri = uri
         preferenceManager.selectedSoundUri = uri
-        // Phát thử âm thanh khi chọn
         playNotificationSound()
     }
 
@@ -112,6 +130,26 @@ class FocusViewModel(application: Application) : AndroidViewModel(application) {
     init {
         listenUser()
         listenPresets()
+
+        // 1. ĐĂNG KÝ BỘ NGHE TÍN HIỆU HẾT GIỜ (Đã fix lỗi ContextCompat)
+        val filter = IntentFilter("com.example.dacs3.TIMER_FINISHED")
+        ContextCompat.registerReceiver(
+            getApplication(),
+            timerFinishedReceiver,
+            filter,
+            ContextCompat.RECEIVER_NOT_EXPORTED
+        )
+
+        // 2. LIÊN TỤC ĐỒNG BỘ GIAO DIỆN TỪ TIMER MANAGER (Cập nhật 10 lần/giây)
+        viewModelScope.launch {
+            while (true) {
+                timeLeft = TimerManager.timeLeft.value
+                isRunning = TimerManager.isRunning.value
+                isFocusMode = TimerManager.isFocusMode.value
+                totalFocusSeconds = TimerManager.totalFocusSeconds.value
+                delay(100L)
+            }
+        }
     }
 
     private fun listenUser() {
@@ -122,12 +160,16 @@ class FocusViewModel(application: Application) : AndroidViewModel(application) {
                 userTitle = userInfo.title
                 userAvatarUrl = userInfo.avatarUrl
                 userAvatarInitial = userInfo.fullName.trim().firstOrNull()?.uppercaseChar()?.toString() ?: "U"
-                
-                // Tính toán giờ làm việc sâu
+
+                currentStreak = userInfo.streak
+
+                totalFocusMinutes = userInfo.totalFocusMinutes
                 totalDeepWorkHours = userInfo.totalFocusMinutes / 60
-                currentStreak = userInfo.currentStreak
-                
-                // Cập nhật Rank
+
+                val hours = userInfo.totalFocusMinutes / 60
+                val mins = userInfo.totalFocusMinutes % 60
+                totalDeepWorkFormatted = String.format("%02d:%02d", hours, mins)
+
                 viewModelScope.launch {
                     globalRank = userRepository.getGlobalRank()
                 }
@@ -140,8 +182,7 @@ class FocusViewModel(application: Application) : AndroidViewModel(application) {
         presetRepository.listenPresets(
             onResult = { presets ->
                 presetsList = presets
-                // Chỉ thiết lập preset mặc định nếu chưa có và KHÔNG đang chạy
-                if (currentPreset == null && presets.isNotEmpty() && !isRunning) {
+                if (currentPreset == null && presets.isNotEmpty() && !TimerManager.isRunning.value) {
                     setPresetWithoutStart(presets.first())
                 }
             },
@@ -149,95 +190,67 @@ class FocusViewModel(application: Application) : AndroidViewModel(application) {
         )
     }
 
+    // ==========================================================
+    // CÁC HÀM SAU ĐÂY ĐÃ ĐƯỢC CHUYỂN SANG RA LỆNH CHO TIMER SERVICE
+    // ==========================================================
+
     fun toggleTimer() {
-        if (isRunning) pauseTimer() else startTimer()
-    }
-
-    private fun startTimer() {
-        if (timerJob?.isActive == true) return
-        isRunning = true
-        timerJob = viewModelScope.launch {
-            var lastTime = System.currentTimeMillis()
-            while (isRunning && timeLeft > 0) {
-                delay(200L) // Kiểm tra thường xuyên hơn để bù trừ sai lệch thời gian
-                val currentTime = System.currentTimeMillis()
-                if (currentTime - lastTime >= 1000L) {
-                    timeLeft--
-                    lastTime += 1000L // Đảm bảo đếm chính xác từng giây
-
-                    if (isFocusMode) {
-                        secondsTracked++
-                        if (secondsTracked >= 60) {
-                            viewModelScope.launch {
-                                userRepository.incrementFocusMinutes(1)
-                            }
-                            secondsTracked = 0
-                        }
-                    }
-                }
-            }
-            if (isRunning && timeLeft <= 0) finishCurrentTimer()
+        val intent = Intent(getApplication(), TimerService::class.java).apply { action = "TOGGLE" }
+        // Khởi động Foreground Service để hiện thông báo chạy ngầm
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !TimerManager.isRunning.value) {
+            getApplication<Application>().startForegroundService(intent)
+        } else {
+            getApplication<Application>().startService(intent)
         }
-    }
-
-    private fun pauseTimer() {
-        isRunning = false
-        timerJob?.cancel()
-        timerJob = null
-        secondsTracked = 0 
-    }
-
-    private fun finishCurrentTimer() {
-        timerJob?.cancel()
-        timerJob = null
-        secondsTracked = 0
-
-        playNotificationSound()
-
-        if (isFocusMode) {
-            val presetName = currentPreset?.title ?: "Focus Timer"
-            val duration = currentPreset?.focusMin ?: 25
-            historyRepository.saveFocusHistory(presetName, duration, onError = { errorMessage = it })
-        }
-
-        isFocusMode = !isFocusMode
-        val nextMinutes = if (isFocusMode) currentPreset?.focusMin ?: 25 else currentPreset?.breakMin ?: 5
-        totalFocusSeconds = nextMinutes * 60
-        timeLeft = totalFocusSeconds
-        startTimer()
     }
 
     fun restartTimer() {
-        pauseTimer()
-        isFocusMode = true
+        if (TimerManager.isRunning.value) {
+            val intent = Intent(getApplication(), TimerService::class.java).apply { action = "TOGGLE" }
+            getApplication<Application>().startService(intent)
+        }
+        TimerManager.isFocusMode.value = true
         val minutes = currentPreset?.focusMin ?: 25
-        totalFocusSeconds = minutes * 60
-        timeLeft = totalFocusSeconds
+        TimerManager.totalFocusSeconds.value = minutes * 60
+        TimerManager.timeLeft.value = minutes * 60
     }
 
     fun skipTimer() {
-        timeLeft = 0
-        finishCurrentTimer()
+        // Gửi lệnh Skip sang cho Service xử lý
+        val intent = Intent(getApplication(), TimerService::class.java).apply { action = "SKIP" }
+        getApplication<Application>().startService(intent)
     }
 
     fun activatePreset(preset: TimerPreset) {
-        pauseTimer()
+        if (TimerManager.isRunning.value) {
+            val intent = Intent(getApplication(), TimerService::class.java).apply { action = "TOGGLE" }
+            getApplication<Application>().startService(intent)
+        }
         currentPreset = preset
-        isFocusMode = true
-        totalFocusSeconds = preset.focusMin * 60
-        timeLeft = totalFocusSeconds
-        startTimer()
+        TimerManager.currentPresetTitle.value = preset.title
+        TimerManager.currentFocusMin.value = preset.focusMin
+        TimerManager.currentBreakMin.value = preset.breakMin
+        TimerManager.isFocusMode.value = true
+        TimerManager.totalFocusSeconds.value = preset.focusMin * 60
+        TimerManager.timeLeft.value = preset.focusMin * 60
+
+        // Tự động bật luôn khi chọn Preset
+        toggleTimer()
     }
 
     private fun setPresetWithoutStart(preset: TimerPreset) {
         currentPreset = preset
-        isFocusMode = true
-        totalFocusSeconds = preset.focusMin * 60
-        // Cập nhật timeLeft nếu timer đang không chạy
-        if (!isRunning) {
-            timeLeft = totalFocusSeconds
+        TimerManager.currentPresetTitle.value = preset.title
+        TimerManager.currentFocusMin.value = preset.focusMin
+        TimerManager.currentBreakMin.value = preset.breakMin
+        TimerManager.isFocusMode.value = true
+        TimerManager.totalFocusSeconds.value = preset.focusMin * 60
+        if (!TimerManager.isRunning.value) {
+            TimerManager.timeLeft.value = preset.focusMin * 60
         }
     }
+
+    // ==========================================================
 
     fun savePreset(preset: TimerPreset) {
         presetRepository.savePreset(preset) { errorMessage = it }
@@ -250,14 +263,11 @@ class FocusViewModel(application: Application) : AndroidViewModel(application) {
     fun updateAvatar(file: File) {
         val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return
         isUploadingAvatar = true
-        errorMessage = null // Reset lỗi cũ
+        errorMessage = null
         viewModelScope.launch {
             try {
-                // 1. Upload lên Supabase
                 val url = authRepository.uploadUserAvatar(userId, file)
-                // 2. Cập nhật link vào Firestore
                 authRepository.updateUserAvatar(userId, url)
-//                errorMessage = "Cập nhật ảnh đại diện thành công!"
             } catch (e: Throwable) {
                 errorMessage = "Lỗi: ${e.message ?: "Không thể cập nhật ảnh đại diện"}"
                 e.printStackTrace()
@@ -276,6 +286,10 @@ class FocusViewModel(application: Application) : AndroidViewModel(application) {
 
     override fun onCleared() {
         super.onCleared()
-        timerJob?.cancel()
+        try {
+            getApplication<Application>().unregisterReceiver(timerFinishedReceiver)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 }

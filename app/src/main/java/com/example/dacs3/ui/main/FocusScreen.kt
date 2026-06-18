@@ -1,6 +1,8 @@
 package com.example.dacs3.ui.main
 
 import android.app.Activity
+import android.content.Intent
+import android.os.Build
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -30,12 +32,13 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.dacs3.viewmodel.FocusViewModel
 import com.example.dacs3.ui.theme.*
 import com.example.dacs3.ui.profile.EditProfileScreen
+import com.example.dacs3.service.TimerService
+import com.example.dacs3.viewmodel.TimerManager
 import kotlinx.coroutines.launch
 
 @Composable
 fun FocusScreen(
     userId: String?,
-    todayFocusTime: String = "00:00",
     activeLiveUsers: Int = 1205,
     isDarkMode: Boolean = false,
     onDarkModeToggle: (Boolean) -> Unit = {},
@@ -52,15 +55,18 @@ fun FocusScreen(
     var showExitWarning by remember { mutableStateOf(false) }
     val context = LocalContext.current
 
-    // Xử lý nút quay lại khi đồng hồ đang chạy
-    BackHandler(enabled = viewModel.isRunning) {
+    // --- LIÊN KẾT TRẠNG THÁI CHẠY NGẦM CHO NÚT BACK ---
+    val isServiceRunning by TimerManager.isRunning.collectAsState()
+
+    // Xử lý nút quay lại khi đồng hồ đang chạy ngầm
+    BackHandler(enabled = isServiceRunning) {
         showExitWarning = true
     }
 
     if (showExitWarning) {
         AlertDialog(
             onDismissRequest = { showExitWarning = false },
-            title = { 
+            title = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.Warning, contentDescription = null, tint = Color.Red)
                     Spacer(modifier = Modifier.width(8.dp))
@@ -70,9 +76,9 @@ fun FocusScreen(
             text = { Text("Đồng hồ đếm ngược vẫn đang chạy. Bạn có chắc chắn muốn thoát ứng dụng không? Tiến trình hiện tại sẽ bị dừng.") },
             confirmButton = {
                 Button(
-                    onClick = { 
+                    onClick = {
                         showExitWarning = false
-                        (context as? Activity)?.finish() 
+                        (context as? Activity)?.finish()
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
                 ) {
@@ -133,6 +139,19 @@ fun FocusScreen(
                 onBackClick = { showPresetsScreen = false },
                 onDelete = { viewModel.deletePreset(it) },
                 onActivate = { preset ->
+                    // --- ĐỒNG BỘ DỮ LIỆU SANG TIMER MANAGER ---
+                    TimerManager.currentPresetTitle.value = preset.title
+                    TimerManager.currentFocusMin.value = preset.focusMin
+                    TimerManager.currentBreakMin.value = preset.breakMin
+                    TimerManager.isFocusMode.value = true
+                    TimerManager.totalFocusSeconds.value = preset.focusMin * 60
+                    TimerManager.timeLeft.value = preset.focusMin * 60
+
+                    if (isServiceRunning) {
+                        val intent = Intent(context, TimerService::class.java).apply { action = "TOGGLE" }
+                        context.startService(intent)
+                    }
+
                     viewModel.activatePreset(preset)
                     showPresetsScreen = false
                 },
@@ -155,7 +174,7 @@ fun FocusScreen(
                     when (currentTab) {
                         "FOCUS" -> FocusContent(
                             userId = userId,
-                            todayFocusTime = todayFocusTime,
+                            todayFocusTime = viewModel.totalDeepWorkFormatted,
                             activeLiveUsers = activeLiveUsers,
                             viewModel = viewModel,
                             onMenuClick = { scope.launch { drawerState.open() } }
@@ -215,6 +234,23 @@ fun FocusContent(
     var showTimeDialog by remember { mutableStateOf(false) }
     var inputMinutes by remember { mutableStateOf("") }
     val scrollState = rememberScrollState()
+    val context = LocalContext.current
+
+    // --- LIÊN KẾT GIAO DIỆN VỚI SERVICE CHẠY NGẦM THÔNG QUA TIMER MANAGER ---
+    val timeLeft by TimerManager.timeLeft.collectAsState()
+    val totalFocusSeconds by TimerManager.totalFocusSeconds.collectAsState()
+    val isRunning by TimerManager.isRunning.collectAsState()
+    val isFocusMode by TimerManager.isFocusMode.collectAsState()
+    val currentPresetTitle by TimerManager.currentPresetTitle.collectAsState()
+
+    fun sendServiceCommand(actionStr: String) {
+        val intent = Intent(context, TimerService::class.java).apply { action = actionStr }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && actionStr == "TOGGLE" && !isRunning) {
+            context.startForegroundService(intent)
+        } else {
+            context.startService(intent)
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -238,33 +274,37 @@ fun FocusContent(
         }
 
         Spacer(modifier = Modifier.height(16.dp))
-        Surface(color = if (viewModel.isFocusMode) GreenPill else Color(0xFFE3F2FD), shape = RoundedCornerShape(16.dp)) {
+        Surface(color = if (isFocusMode) GreenPill else Color(0xFFE3F2FD), shape = RoundedCornerShape(16.dp)) {
             Row(modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                Box(modifier = Modifier.size(6.dp).clip(CircleShape).background(if (viewModel.isFocusMode) GreenText else PrimaryBlue))
+                Box(modifier = Modifier.size(6.dp).clip(CircleShape).background(if (isFocusMode) GreenText else PrimaryBlue))
                 Spacer(modifier = Modifier.width(6.dp))
-                Text(text = if (viewModel.isFocusMode) "FOCUS SESSION" else "BREAK TIME", color = if (viewModel.isFocusMode) GreenText else PrimaryBlue, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                Text(text = if (isFocusMode) "FOCUS SESSION" else "BREAK TIME", color = if (isFocusMode) GreenText else PrimaryBlue, fontSize = 10.sp, fontWeight = FontWeight.Bold)
             }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
-        Text(text = if (viewModel.isFocusMode) (viewModel.currentPreset?.title ?: "Focus Timer") else "Rest & Recharge", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
+        Text(text = if (isFocusMode) currentPresetTitle else "Rest & Recharge", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
         Spacer(modifier = Modifier.height(40.dp))
         Box(modifier = Modifier.clickable { showTimeDialog = true }) {
-            CircularTimerDisplay(timeLeft = viewModel.timeLeft, totalTime = viewModel.totalFocusSeconds)
+            CircularTimerDisplay(timeLeft = timeLeft, totalTime = totalFocusSeconds)
         }
         Spacer(modifier = Modifier.height(40.dp))
 
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(24.dp)) {
             Surface(color = MaterialTheme.colorScheme.surfaceVariant, shape = CircleShape, modifier = Modifier.size(56.dp)) {
-                IconButton(onClick = { viewModel.restartTimer() }) { Icon(Icons.Default.Refresh, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) }
+                IconButton(onClick = {
+                    if (isRunning) sendServiceCommand("TOGGLE")
+                    TimerManager.timeLeft.value = totalFocusSeconds
+                    viewModel.restartTimer()
+                }) { Icon(Icons.Default.Refresh, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) }
             }
             Surface(color = MaterialTheme.colorScheme.primary, shape = RoundedCornerShape(24.dp), modifier = Modifier.size(80.dp)) {
-                IconButton(onClick = { viewModel.toggleTimer() }) {
-                    Icon(if (viewModel.isRunning) Icons.Default.Pause else Icons.Default.PlayArrow, null, tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(36.dp))
+                IconButton(onClick = { sendServiceCommand("TOGGLE") }) {
+                    Icon(if (isRunning) Icons.Default.Pause else Icons.Default.PlayArrow, null, tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(36.dp))
                 }
             }
             Surface(color = MaterialTheme.colorScheme.surfaceVariant, shape = CircleShape, modifier = Modifier.size(56.dp)) {
-                IconButton(onClick = { viewModel.skipTimer() }) { Icon(Icons.Default.SkipNext, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) }
+                IconButton(onClick = { sendServiceCommand("SKIP") }) { Icon(Icons.Default.SkipNext, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) }
             }
         }
 
@@ -282,7 +322,22 @@ fun FocusContent(
             onDismissRequest = { showTimeDialog = false },
             title = { Text("Set Focus Timer") },
             text = { OutlinedTextField(value = inputMinutes, onValueChange = { inputMinutes = it }, label = { Text("Minutes") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)) },
-            confirmButton = { Button(onClick = { viewModel.createCustomTimer(inputMinutes.toIntOrNull() ?: 25); showTimeDialog = false }) { Text("Set") } }
+            confirmButton = {
+                Button(onClick = {
+                    val mins = inputMinutes.toIntOrNull() ?: 25
+                    TimerManager.currentPresetTitle.value = "Custom Timer"
+                    TimerManager.currentFocusMin.value = mins
+                    TimerManager.currentBreakMin.value = 5
+                    TimerManager.isFocusMode.value = true
+                    TimerManager.totalFocusSeconds.value = mins * 60
+                    TimerManager.timeLeft.value = mins * 60
+
+                    if (isRunning) sendServiceCommand("TOGGLE")
+
+                    viewModel.createCustomTimer(mins)
+                    showTimeDialog = false
+                }) { Text("Set") }
+            }
         )
     }
 }
@@ -299,7 +354,7 @@ fun CircularTimerDisplay(timeLeft: Int, totalTime: Int) {
     val seconds = timeLeft % 60
     val trackColor = MaterialTheme.colorScheme.surfaceVariant
     val progressColor = MaterialTheme.colorScheme.primary
-    
+
     Box(contentAlignment = Alignment.Center, modifier = Modifier.size(240.dp)) {
         Canvas(modifier = Modifier.fillMaxSize()) {
             drawArc(trackColor, 0f, 360f, false, style = Stroke(14.dp.toPx(), cap = StrokeCap.Round))

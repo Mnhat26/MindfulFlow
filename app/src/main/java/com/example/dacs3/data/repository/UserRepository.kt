@@ -5,14 +5,16 @@ import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.tasks.await
+import java.text.SimpleDateFormat
 import java.util.Calendar
+import java.util.Locale
 
 data class UserInfo(
     val fullName: String = "Unknown User",
     val avatarUrl: String = "",
     val title: String = "Member",
     val totalFocusMinutes: Int = 0,
-    val currentStreak: Int = 0
+    val streak: Int = 0  // ĐÃ ĐỔI VỀ STREAK
 )
 
 class UserRepository {
@@ -24,33 +26,41 @@ class UserRepository {
         onResult: (UserInfo) -> Unit,
         onError: (String) -> Unit
     ) {
-        val uid = auth.currentUser?.uid
-
-        if (uid == null) {
-            onResult(UserInfo("Guest"))
-            return
-        }
+        val uid = auth.currentUser?.uid ?: return
 
         db.collection("users")
             .document(uid)
             .addSnapshotListener { document, error ->
                 if (error != null) {
-                    onError(error.localizedMessage ?: "Lỗi khi tải thông tin user")
+                    onError(error.localizedMessage ?: "Lỗi kết nối Firestore")
                     return@addSnapshotListener
                 }
 
                 if (document != null && document.exists()) {
+                    val lastDate = document.getString("lastFocusDate") ?: ""
+                    var dbStreak = document.getLong("streak")?.toInt() ?: 0 // ĐÃ ĐỔI VỀ STREAK
+
+                    if (dbStreak > 0 && lastDate.isNotEmpty()) {
+                        val cal = Calendar.getInstance()
+                        val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                        val todayStr = sdf.format(cal.time)
+
+                        cal.add(Calendar.DAY_OF_YEAR, -1)
+                        val yesterdayStr = sdf.format(cal.time)
+
+                        if (lastDate != todayStr && lastDate != yesterdayStr) {
+                            dbStreak = 0
+                            document.reference.update("streak", 0) // ĐÃ ĐỔI VỀ STREAK
+                        }
+                    }
+
                     val userInfo = UserInfo(
                         fullName = document.getString("fullName") ?: "Unknown User",
                         avatarUrl = document.getString("avatarUrl") ?: "",
                         title = document.getString("title") ?: "Member",
                         totalFocusMinutes = document.getLong("totalFocusMinutes")?.toInt() ?: 0,
-                        currentStreak = document.getLong("currentStreak")?.toInt() ?: 0
+                        streak = dbStreak // ĐÃ ĐỔI VỀ STREAK
                     )
-                    
-                    // Kiểm tra và cập nhật streak khi mở app
-                    updateDailyStreak(document.getLong("lastOpenTimestamp") ?: 0L, document.getLong("currentStreak")?.toInt() ?: 0)
-                    
                     onResult(userInfo)
                 } else {
                     onResult(UserInfo("No Data Found"))
@@ -65,7 +75,7 @@ class UserRepository {
                 .update("totalFocusMinutes", FieldValue.increment(minutes.toLong()))
                 .await()
         } catch (e: Exception) {
-            // Log error if needed
+            // Log error
         }
     }
 
@@ -91,59 +101,15 @@ class UserRepository {
         return try {
             val userDoc = db.collection("users").document(uid).get().await()
             val userMinutes = userDoc.getLong("totalFocusMinutes") ?: 0L
-            
-            // Đếm số lượng user có totalFocusMinutes lớn hơn
+
             val query = db.collection("users")
                 .whereGreaterThan("totalFocusMinutes", userMinutes)
                 .get()
                 .await()
-            
+
             query.size() + 1
         } catch (e: Exception) {
-            1 // Default rank
+            1
         }
-    }
-
-    private fun updateDailyStreak(lastOpenTime: Long, currentStreak: Int) {
-        val uid = auth.currentUser?.uid ?: return
-        val currentTime = System.currentTimeMillis()
-        
-        if (isSameDay(lastOpenTime, currentTime)) {
-            // Đã mở app hôm nay rồi, không làm gì cả
-            return
-        }
-
-        val newStreak = if (isYesterday(lastOpenTime, currentTime)) {
-            currentStreak + 1
-        } else {
-            1 // Bỏ lỡ hoặc mới bắt đầu
-        }
-
-        db.collection("users").document(uid).update(
-            mapOf(
-                "currentStreak" to newStreak,
-                "lastOpenTimestamp" to currentTime
-            )
-        )
-    }
-
-    private fun isSameDay(time1: Long, time2: Long): Boolean {
-        if (time1 == 0L) return false
-        val cal1 = Calendar.getInstance().apply { timeInMillis = time1 }
-        val cal2 = Calendar.getInstance().apply { timeInMillis = time2 }
-        return cal1.get(Calendar.YEAR) == cal2.get(Calendar.YEAR) &&
-                cal1.get(Calendar.DAY_OF_YEAR) == cal2.get(Calendar.DAY_OF_YEAR)
-    }
-
-    private fun isYesterday(lastTime: Long, currentTime: Long): Boolean {
-        if (lastTime == 0L) return false
-        val calYesterday = Calendar.getInstance().apply { 
-            timeInMillis = currentTime
-            add(Calendar.DAY_OF_YEAR, -1)
-        }
-        val calLast = Calendar.getInstance().apply { timeInMillis = lastTime }
-        
-        return calLast.get(Calendar.YEAR) == calYesterday.get(Calendar.YEAR) &&
-                calLast.get(Calendar.DAY_OF_YEAR) == calYesterday.get(Calendar.DAY_OF_YEAR)
     }
 }
