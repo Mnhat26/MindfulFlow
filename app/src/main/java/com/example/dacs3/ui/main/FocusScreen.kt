@@ -1,7 +1,10 @@
 package com.example.dacs3.ui.main
 
+import android.app.Activity
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -18,6 +21,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -25,6 +29,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.dacs3.viewmodel.FocusViewModel
 import com.example.dacs3.ui.theme.*
+import com.example.dacs3.ui.profile.EditProfileScreen
 import kotlinx.coroutines.launch
 
 @Composable
@@ -32,6 +37,8 @@ fun FocusScreen(
     userId: String?,
     todayFocusTime: String = "00:00",
     activeLiveUsers: Int = 1205,
+    isDarkMode: Boolean = false,
+    onDarkModeToggle: (Boolean) -> Unit = {},
     viewModel: FocusViewModel = viewModel(
         key = userId ?: "guest"
     ),
@@ -41,12 +48,50 @@ fun FocusScreen(
     val scope = rememberCoroutineScope()
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     var showPresetsScreen by remember { mutableStateOf(false) }
+    var showEditProfile by remember { mutableStateOf(false) }
+    var showExitWarning by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+
+    // Xử lý nút quay lại khi đồng hồ đang chạy
+    BackHandler(enabled = viewModel.isRunning) {
+        showExitWarning = true
+    }
+
+    if (showExitWarning) {
+        AlertDialog(
+            onDismissRequest = { showExitWarning = false },
+            title = { 
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Warning, contentDescription = null, tint = Color.Red)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Cảnh báo thoát")
+                }
+            },
+            text = { Text("Đồng hồ đếm ngược vẫn đang chạy. Bạn có chắc chắn muốn thoát ứng dụng không? Tiến trình hiện tại sẽ bị dừng.") },
+            confirmButton = {
+                Button(
+                    onClick = { 
+                        showExitWarning = false
+                        (context as? Activity)?.finish() 
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
+                ) {
+                    Text("Thoát", color = Color.White)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showExitWarning = false }) {
+                    Text("Tiếp tục tập trung", color = MaterialTheme.colorScheme.primary)
+                }
+            }
+        )
+    }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
             ModalDrawerSheet(
-                drawerContainerColor = Color.White,
+                drawerContainerColor = MaterialTheme.colorScheme.surface,
                 modifier = Modifier.width(300.dp)
             ) {
                 Spacer(modifier = Modifier.height(48.dp))
@@ -57,20 +102,20 @@ fun FocusScreen(
                         modifier = Modifier.size(64.dp)
                     )
                     Spacer(modifier = Modifier.height(16.dp))
-                    Text(text = viewModel.userName, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = AppNavy)
-                    Text(text = viewModel.userTitle, fontSize = 14.sp, color = AppNavy.copy(alpha = 0.7f))
+                    Text(text = viewModel.userName, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                    Text(text = viewModel.userTitle, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text(text = "${viewModel.totalDeepWorkHours}H DEEP WORK", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
+                    Text(text = "${viewModel.totalDeepWorkHours}H DEEP WORK", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Spacer(modifier = Modifier.height(32.dp))
                 NavigationDrawerItem(
-                    icon = { Icon(Icons.Default.Timer, contentDescription = null, tint = AppNavy) },
+                    icon = { Icon(Icons.Default.Timer, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
                     label = { Text("Focus Timer") },
                     selected = false,
                     onClick = { scope.launch { drawerState.close() }; showPresetsScreen = true },
                     modifier = Modifier.padding(horizontal = 16.dp)
                 )
-                HorizontalDivider(modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp), color = Color.LightGray.copy(alpha = 0.3f))
+                HorizontalDivider(modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp), color = MaterialTheme.colorScheme.outlineVariant)
                 DrawerMenuItem(Icons.Default.Settings, "Settings")
                 NavigationDrawerItem(
                     icon = { Icon(Icons.Default.ExitToApp, contentDescription = null, tint = Color.Red) },
@@ -92,6 +137,10 @@ fun FocusScreen(
                     showPresetsScreen = false
                 },
                 onSavePreset = { viewModel.savePreset(it) }
+            )
+        } else if (showEditProfile) {
+            EditProfileScreen(
+                onBack = { showEditProfile = false }
             )
         } else {
             Scaffold(
@@ -127,8 +176,17 @@ fun FocusScreen(
                             userAvatarInitial = viewModel.userAvatarInitial,
                             userEmail = viewModel.userEmail,
                             totalFocusHours = viewModel.totalDeepWorkHours.toString(),
+                            globalRank = "#${viewModel.globalRank}",
+                            currentStreak = viewModel.currentStreak.toString(),
                             isUploadingAvatar = viewModel.isUploadingAvatar,
-//                            updateStatus = viewModel.errorMessage,
+                            isDarkMode = isDarkMode,
+                            isNotificationSoundEnabled = viewModel.isNotificationSoundEnabled,
+                            selectedSoundUri = viewModel.selectedSoundUri,
+                            onDarkModeToggle = onDarkModeToggle,
+                            onNotificationSoundToggle = { viewModel.toggleNotificationSound(it) },
+                            onSoundSelected = { viewModel.setSelectedSound(it) },
+                            onPomodoroSettingsClick = { showPresetsScreen = true },
+                            onEditProfile = { showEditProfile = true },
                             onLogout = onLogout,
                             onAvatarSelected = { file -> viewModel.updateAvatar(file) }
                         )
@@ -142,7 +200,7 @@ fun FocusScreen(
 @Composable
 fun CenterText(text: String) {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Text(text, color = AppNavy, fontWeight = FontWeight.Bold)
+        Text(text, color = MaterialTheme.colorScheme.onBackground, fontWeight = FontWeight.Bold)
     }
 }
 
@@ -161,7 +219,7 @@ fun FocusContent(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(BgLight)
+            .background(MaterialTheme.colorScheme.background)
             .verticalScroll(scrollState)
             .padding(horizontal = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -169,9 +227,9 @@ fun FocusContent(
         Spacer(modifier = Modifier.height(16.dp))
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
             IconButton(onClick = onMenuClick) {
-                Icon(Icons.Default.Menu, contentDescription = "Menu", tint = AppNavy)
+                Icon(Icons.Default.Menu, contentDescription = "Menu", tint = MaterialTheme.colorScheme.onBackground)
             }
-            Text(text = "Mindful Flow", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = AppNavy)
+            Text(text = "Mindful Flow", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
             UserAvatar(
                 imageUrl = viewModel.userAvatarUrl,
                 initial = viewModel.userAvatarInitial,
@@ -189,29 +247,31 @@ fun FocusContent(
         }
 
         Spacer(modifier = Modifier.height(16.dp))
-        Text(text = if (viewModel.isFocusMode) (viewModel.currentPreset?.title ?: "Focus Timer") else "Rest & Recharge", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = AppNavy)
+        Text(text = if (viewModel.isFocusMode) (viewModel.currentPreset?.title ?: "Focus Timer") else "Rest & Recharge", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
         Spacer(modifier = Modifier.height(40.dp))
-        CircularTimerDisplay(timeLeft = viewModel.timeLeft, totalTime = viewModel.totalFocusSeconds)
+        Box(modifier = Modifier.clickable { showTimeDialog = true }) {
+            CircularTimerDisplay(timeLeft = viewModel.timeLeft, totalTime = viewModel.totalFocusSeconds)
+        }
         Spacer(modifier = Modifier.height(40.dp))
 
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(24.dp)) {
-            Surface(color = TrackGray, shape = CircleShape, modifier = Modifier.size(56.dp)) {
-                IconButton(onClick = { viewModel.restartTimer() }) { Icon(Icons.Default.Refresh, null, tint = AppNavy) }
+            Surface(color = MaterialTheme.colorScheme.surfaceVariant, shape = CircleShape, modifier = Modifier.size(56.dp)) {
+                IconButton(onClick = { viewModel.restartTimer() }) { Icon(Icons.Default.Refresh, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) }
             }
-            Surface(color = AppNavy, shape = RoundedCornerShape(24.dp), modifier = Modifier.size(80.dp)) {
+            Surface(color = MaterialTheme.colorScheme.primary, shape = RoundedCornerShape(24.dp), modifier = Modifier.size(80.dp)) {
                 IconButton(onClick = { viewModel.toggleTimer() }) {
-                    Icon(if (viewModel.isRunning) Icons.Default.Pause else Icons.Default.PlayArrow, null, tint = Color.White, modifier = Modifier.size(36.dp))
+                    Icon(if (viewModel.isRunning) Icons.Default.Pause else Icons.Default.PlayArrow, null, tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(36.dp))
                 }
             }
-            Surface(color = TrackGray, shape = CircleShape, modifier = Modifier.size(56.dp)) {
-                IconButton(onClick = { viewModel.skipTimer() }) { Icon(Icons.Default.SkipNext, null, tint = AppNavy) }
+            Surface(color = MaterialTheme.colorScheme.surfaceVariant, shape = CircleShape, modifier = Modifier.size(56.dp)) {
+                IconButton(onClick = { viewModel.skipTimer() }) { Icon(Icons.Default.SkipNext, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) }
             }
         }
 
         Spacer(modifier = Modifier.height(40.dp))
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            StatCard(Modifier.weight(1f), "TODAY", todayFocusTime, "Deep Work", Icons.Default.BarChart, Color.White, AppNavy)
-            StatCard(Modifier.weight(1f), "LIVE", "+%,d".format(activeLiveUsers), "Flowing", Icons.Default.People, AppNavy, Color.White)
+            StatCard(Modifier.weight(1f), "TODAY", todayFocusTime, "Deep Work", Icons.Default.BarChart, MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.onSurface)
+            StatCard(Modifier.weight(1f), "LIVE", "+%,d".format(activeLiveUsers), "Flowing", Icons.Default.People, MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.onPrimary)
         }
         viewModel.errorMessage?.let { Text(it, color = Color.Red, fontSize = 12.sp, modifier = Modifier.padding(top = 16.dp)) }
         Spacer(modifier = Modifier.height(32.dp))
@@ -229,7 +289,7 @@ fun FocusContent(
 
 @Composable
 fun DrawerMenuItem(icon: androidx.compose.ui.graphics.vector.ImageVector, text: String) {
-    NavigationDrawerItem(icon = { Icon(icon, null, tint = Color.Gray) }, label = { Text(text) }, selected = false, onClick = {}, modifier = Modifier.padding(horizontal = 16.dp))
+    NavigationDrawerItem(icon = { Icon(icon, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) }, label = { Text(text) }, selected = false, onClick = {}, modifier = Modifier.padding(horizontal = 16.dp))
 }
 
 @Composable
@@ -237,14 +297,17 @@ fun CircularTimerDisplay(timeLeft: Int, totalTime: Int) {
     val progress = if (totalTime > 0) timeLeft.toFloat() / totalTime.toFloat() else 0f
     val minutes = timeLeft / 60
     val seconds = timeLeft % 60
+    val trackColor = MaterialTheme.colorScheme.surfaceVariant
+    val progressColor = MaterialTheme.colorScheme.primary
+    
     Box(contentAlignment = Alignment.Center, modifier = Modifier.size(240.dp)) {
         Canvas(modifier = Modifier.fillMaxSize()) {
-            drawArc(TrackGray, 0f, 360f, false, style = Stroke(14.dp.toPx(), cap = StrokeCap.Round))
-            drawArc(PrimaryBlue, -90f, 360f * progress, false, style = Stroke(14.dp.toPx(), cap = StrokeCap.Round))
+            drawArc(trackColor, 0f, 360f, false, style = Stroke(14.dp.toPx(), cap = StrokeCap.Round))
+            drawArc(progressColor, -90f, 360f * progress, false, style = Stroke(14.dp.toPx(), cap = StrokeCap.Round))
         }
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(String.format("%02d:%02d", minutes, seconds), fontSize = 56.sp, fontWeight = FontWeight.ExtraBold, color = AppNavy)
-            Text("REMAINING", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Gray, letterSpacing = 2.sp)
+            Text(String.format("%02d:%02d", minutes, seconds), fontSize = 56.sp, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.onBackground)
+            Text("REMAINING", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant, letterSpacing = 2.sp)
         }
     }
 }
@@ -267,7 +330,7 @@ fun StatCard(modifier: Modifier, title: String, value: String, subtitle: String,
 
 @Composable
 fun BottomNavigationBar(currentTab: String, onTabSelected: (String) -> Unit) {
-    NavigationBar(containerColor = Color.White, tonalElevation = 8.dp) {
+    NavigationBar(containerColor = MaterialTheme.colorScheme.surface, tonalElevation = 8.dp) {
         val items = listOf(
             Triple("FOCUS", Icons.Default.Timer, "FOCUS"),
             Triple("CHAT", Icons.Default.Chat, "CHAT"),
@@ -280,7 +343,7 @@ fun BottomNavigationBar(currentTab: String, onTabSelected: (String) -> Unit) {
                 label = { Text(label, fontWeight = if (currentTab == tab) FontWeight.Bold else FontWeight.Normal) },
                 selected = currentTab == tab,
                 onClick = { onTabSelected(tab) },
-                colors = NavigationBarItemDefaults.colors(selectedIconColor = AppNavy, selectedTextColor = AppNavy, indicatorColor = Color(0xFFE8EAF6))
+                colors = NavigationBarItemDefaults.colors(selectedIconColor = MaterialTheme.colorScheme.primary, selectedTextColor = MaterialTheme.colorScheme.primary, indicatorColor = MaterialTheme.colorScheme.primaryContainer)
             )
         }
     }

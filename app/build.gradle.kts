@@ -1,10 +1,12 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     id("com.google.gms.google-services")
+    alias(libs.plugins.kotlin.android)
 }
 
-import java.util.Properties
 
 val localProps = Properties().apply {
     val file = rootProject.file("local.properties")
@@ -15,14 +17,12 @@ val localProps = Properties().apply {
 
 android {
     namespace = "com.example.dacs3"
-    compileSdk {
-        version = release(36)
-    }
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.example.dacs3"
         minSdk = 24
-        targetSdk = 36
+        targetSdk = 35
         versionCode = 1
         versionName = "1.0"
 
@@ -54,6 +54,13 @@ android {
         compose = true
         buildConfig = true
     }
+    kotlinOptions {
+        jvmTarget = "11"
+    }
+}
+
+tasks.matching { it.name.contains("googleServices", ignoreCase = true) }.configureEach {
+    doNotTrackState("Workaround for IOException: not a regular file - see https://github.com/google/play-services-plugins/issues/230")
 }
 
 dependencies {
@@ -77,7 +84,7 @@ dependencies {
     implementation(platform("com.google.firebase:firebase-bom:33.0.0"))
     implementation("com.google.firebase:firebase-auth-ktx")
     implementation("com.google.firebase:firebase-firestore-ktx")
-    implementation("com.google.android.gms:play-services-auth:21.1.1")
+    implementation("com.google.android.gms:play-services-auth:21.6.0")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
     implementation("androidx.compose.material3:material3:1.2.1")
     implementation("io.coil-kt:coil-compose:2.6.0")

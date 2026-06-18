@@ -25,15 +25,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.viewmodel.compose.viewModel
+import android.util.Log
 import com.example.dacs3.R
 import com.example.dacs3.viewmodel.AuthViewModel
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
-
-val AppNavy = Color(0xFF060B26)
-val AppLightGray = Color(0xFFF5F7FA)
-val TextGray = Color(0xFF6B7280)
 
 @Composable
 fun LoginScreen(
@@ -44,6 +41,13 @@ fun LoginScreen(
     val scrollState = rememberScrollState()
 
     val context = LocalContext.current
+    val gso = remember {
+        GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            .requestIdToken(context.getString(R.string.default_web_client_id))
+            .requestEmail()
+            .build()
+    }
+    val googleSignInClient = remember { GoogleSignIn.getClient(context, gso) }
 
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
@@ -56,16 +60,25 @@ fun LoginScreen(
 
                 account?.idToken?.let { idToken ->
                     viewModel.onGoogleLogin(idToken)
+                } ?: run {
+                    viewModel.errorMessage = "Google Sign-In: ID Token is null"
                 }
+            } catch (e: ApiException) {
+                Log.e("GoogleSignIn", "Error code: ${e.statusCode}")
+                viewModel.errorMessage = "Google Sign-In failed (Code ${e.statusCode}): ${e.localizedMessage}"
             } catch (e: Exception) {
-                viewModel.errorMessage = "Google Sign-In failed: ${e.localizedMessage}"
+                Log.e("GoogleSignIn", "Error: ${e.message}")
+                viewModel.errorMessage = "Google Sign-In error: ${e.localizedMessage}"
             }
+        } else {
+            Log.e("GoogleSignIn", "Result Code: ${result.resultCode}")
+            // viewModel.errorMessage = "Google Sign-In cancelled or failed (Code: ${result.resultCode})"
         }
     }
 
     Surface(
         modifier = Modifier.fillMaxSize(),
-        color = AppLightGray
+        color = MaterialTheme.colorScheme.background
     ) {
         Column(
             modifier = Modifier
@@ -80,13 +93,13 @@ fun LoginScreen(
 
             Surface(
                 shape = RoundedCornerShape(16.dp),
-                color = AppNavy,
+                color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(64.dp)
             ) {
                 Icon(
                     imageVector = Icons.Default.Settings,
                     contentDescription = "Logo",
-                    tint = Color.White,
+                    tint = MaterialTheme.colorScheme.onPrimary,
                     modifier = Modifier.padding(16.dp)
                 )
             }
@@ -97,7 +110,7 @@ fun LoginScreen(
                 text = "Mindful Flow",
                 fontSize = 28.sp,
                 fontWeight = FontWeight.Bold,
-                color = AppNavy
+                color = MaterialTheme.colorScheme.onBackground
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -105,7 +118,7 @@ fun LoginScreen(
             Text(
                 text = "Welcome back to your sanctuary of focus.",
                 fontSize = 14.sp,
-                color = TextGray
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
             Spacer(modifier = Modifier.height(40.dp))
@@ -115,7 +128,7 @@ fun LoginScreen(
                     text = "EMAIL ADDRESS",
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
-                    color = AppNavy,
+                    color = MaterialTheme.colorScheme.onBackground,
                     letterSpacing = 1.sp
                 )
 
@@ -129,15 +142,17 @@ fun LoginScreen(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
                     colors = TextFieldDefaults.colors(
-                        focusedContainerColor = Color.White,
-                        unfocusedContainerColor = Color.White,
+                        focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
                         focusedIndicatorColor = Color.Transparent,
-                        unfocusedIndicatorColor = Color.Transparent
+                        unfocusedIndicatorColor = Color.Transparent,
+                        focusedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
                     ),
                     trailingIcon = {
                         Text(
                             text = "@",
-                            color = Color.LightGray,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                             fontSize = 20.sp,
                             modifier = Modifier.padding(end = 12.dp)
                         )
@@ -160,7 +175,7 @@ fun LoginScreen(
                         text = "SECURITY CODE",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
-                        color = AppNavy,
+                        color = MaterialTheme.colorScheme.onBackground,
                         letterSpacing = 1.sp
                     )
 
@@ -168,7 +183,7 @@ fun LoginScreen(
                         text = "Forgot Password?",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
-                        color = AppNavy
+                        color = MaterialTheme.colorScheme.primary
                     )
                 }
 
@@ -182,16 +197,18 @@ fun LoginScreen(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
                     colors = TextFieldDefaults.colors(
-                        focusedContainerColor = Color.White,
-                        unfocusedContainerColor = Color.White,
+                        focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
                         focusedIndicatorColor = Color.Transparent,
-                        unfocusedIndicatorColor = Color.Transparent
+                        unfocusedIndicatorColor = Color.Transparent,
+                        focusedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
                     ),
                     trailingIcon = {
                         Icon(
                             imageVector = Icons.Default.Lock,
                             contentDescription = null,
-                            tint = Color.LightGray
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                         )
                     },
                     visualTransformation = PasswordVisualTransformation(),
@@ -225,12 +242,12 @@ fun LoginScreen(
                     .height(56.dp),
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = AppNavy
+                    containerColor = MaterialTheme.colorScheme.primary
                 )
             ) {
                 if (viewModel.isLoading) {
                     CircularProgressIndicator(
-                        color = Color.White,
+                        color = MaterialTheme.colorScheme.onPrimary,
                         modifier = Modifier.size(24.dp)
                     )
                 } else {
@@ -238,7 +255,7 @@ fun LoginScreen(
                         text = "Enter Flow State",
                         fontSize = 16.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = Color.White
+                        color = MaterialTheme.colorScheme.onPrimary
                     )
 
                     Spacer(modifier = Modifier.width(8.dp))
@@ -246,7 +263,7 @@ fun LoginScreen(
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                         contentDescription = null,
-                        tint = Color.White,
+                        tint = MaterialTheme.colorScheme.onPrimary,
                         modifier = Modifier.size(20.dp)
                     )
                 }
@@ -260,19 +277,19 @@ fun LoginScreen(
             ) {
                 HorizontalDivider(
                     modifier = Modifier.weight(1f),
-                    color = Color.LightGray.copy(alpha = 0.5f)
+                    color = MaterialTheme.colorScheme.outlineVariant
                 )
 
                 Text(
                     text = " COMMUNITY ACCESS ",
                     fontSize = 10.sp,
-                    color = TextGray,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     letterSpacing = 1.sp
                 )
 
                 HorizontalDivider(
                     modifier = Modifier.weight(1f),
-                    color = Color.LightGray.copy(alpha = 0.5f)
+                    color = MaterialTheme.colorScheme.outlineVariant
                 )
             }
 
@@ -285,27 +302,15 @@ fun LoginScreen(
                 Button(
                     onClick = {
                         onGoogleClick()
-
-                        val gso = GoogleSignInOptions.Builder(
-                            GoogleSignInOptions.DEFAULT_SIGN_IN
-                        )
-                            .requestIdToken(context.getString(R.string.default_web_client_id))
-                            .requestEmail()
-                            .build()
-
-                        val googleSignInClient = GoogleSignIn.getClient(context, gso)
-
-                        googleSignInClient.signOut().addOnCompleteListener {
-                            launcher.launch(googleSignInClient.signInIntent)
-                        }
+                        launcher.launch(googleSignInClient.signInIntent)
                     },
                     modifier = Modifier
                         .weight(1f)
                         .height(50.dp),
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.White,
-                        contentColor = Color.Black
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        contentColor = MaterialTheme.colorScheme.onSurface
                     )
                 ) {
                     Text(
@@ -320,7 +325,7 @@ fun LoginScreen(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = "Don't have an account? ",
-                    color = TextGray,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 14.sp
                 )
 
@@ -330,7 +335,7 @@ fun LoginScreen(
                 ) {
                     Text(
                         text = "Sign Up",
-                        color = AppNavy,
+                        color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.Bold,
                         fontSize = 14.sp
                     )
@@ -361,7 +366,7 @@ fun LoginScreen(
                         text = "SECURE SESSION ENCRYPTED",
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
-                        color = AppNavy
+                        color = Color(0xFF2E7D32)
                     )
                 }
             }
@@ -374,4 +379,3 @@ fun LoginScreen(
 fun PreviewLoginScreen() {
     LoginScreen()
 }
-//

@@ -6,6 +6,8 @@ data class User(
     val email: String = "",
     val avatarUrl: String = "",
     val totalDeepWorkHours: Int = 0,
-    val totalFocusMinutes: Int = 0, // Thêm điểm tích lũy phút
-    val title: String = "Member"
+    val totalFocusMinutes: Int = 0,
+    val title: String = "Member",
+    val currentStreak: Int = 0,
+    val lastOpenTimestamp: Long = 0L
 )

@@ -33,13 +33,12 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import android.util.Log
 import com.example.dacs3.R
 import com.example.dacs3.viewmodel.AuthViewModel
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
-
-private val InputBgGray = Color(0xFFF3F4F6)
 
 @Composable
 fun RegisterScreen(
@@ -52,6 +51,14 @@ fun RegisterScreen(
     val scrollState = rememberScrollState()
 
     val context = LocalContext.current
+    val gso = remember {
+        GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            .requestIdToken(context.getString(R.string.default_web_client_id))
+            .requestEmail()
+            .build()
+    }
+    val googleSignInClient = remember { GoogleSignIn.getClient(context, gso) }
+
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { result ->
@@ -59,16 +66,24 @@ fun RegisterScreen(
             val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
             try {
                 val account = task.getResult(ApiException::class.java)
-                account?.idToken?.let { viewModel.onGoogleLogin(it) }
+                account?.idToken?.let { viewModel.onGoogleLogin(it) } ?: run {
+                    viewModel.errorMessage = "Google Sign-In: ID Token is null"
+                }
+            } catch (e: ApiException) {
+                Log.e("GoogleSignIn", "Error code: ${e.statusCode}")
+                viewModel.errorMessage = "Google Sign-In failed (Code ${e.statusCode}): ${e.localizedMessage}"
             } catch (e: Exception) {
-                viewModel.errorMessage = "Google Sign-In failed: ${e.localizedMessage}"
+                Log.e("GoogleSignIn", "Error: ${e.message}")
+                viewModel.errorMessage = "Google Sign-In error: ${e.localizedMessage}"
             }
+        } else {
+            Log.e("GoogleSignIn", "Result Code: ${result.resultCode}")
         }
     }
 
     Surface(
         modifier = Modifier.fillMaxSize(),
-        color = Color.White
+        color = MaterialTheme.colorScheme.background
     ) {
         Column(
             modifier = Modifier
@@ -83,11 +98,11 @@ fun RegisterScreen(
                 Icon(
                     imageVector = Icons.Default.Star,
                     contentDescription = "Logo",
-                    tint = AppNavy,
+                    tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(28.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Mindful Flow", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = AppNavy)
+                Text("Mindful Flow", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
             }
 
             Spacer(modifier = Modifier.height(32.dp))
@@ -96,29 +111,24 @@ fun RegisterScreen(
                 text = "Create your\nsanctuary",
                 fontSize = 32.sp,
                 fontWeight = FontWeight.Bold,
-                color = AppNavy,
+                color = MaterialTheme.colorScheme.onBackground,
                 lineHeight = 36.sp
             )
             Spacer(modifier = Modifier.height(8.dp))
-            Text("Start your journey to deeper focus today.", fontSize = 14.sp, color = TextGray)
+            Text("Start your journey to deeper focus today.", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
 
             Spacer(modifier = Modifier.height(32.dp))
 
             Button(
                 onClick = {
                     onGoogleClick()
-                    val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-                        .requestIdToken(context.getString(R.string.default_web_client_id))
-                        .requestEmail()
-                        .build()
-                    val googleSignInClient = GoogleSignIn.getClient(context, gso)
                     launcher.launch(googleSignInClient.signInIntent)
                 },
                 modifier = Modifier.fillMaxWidth().height(50.dp),
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = InputBgGray,
-                    contentColor = Color.Black
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             ) {
                 Text("Continue with Google", fontWeight = FontWeight.SemiBold)
@@ -127,9 +137,9 @@ fun RegisterScreen(
             Spacer(modifier = Modifier.height(24.dp))
 
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                HorizontalDivider(modifier = Modifier.weight(1f), color = Color.LightGray.copy(alpha = 0.5f))
-                Text(" OR WITH EMAIL ", fontSize = 10.sp, color = TextGray, letterSpacing = 1.sp)
-                HorizontalDivider(modifier = Modifier.weight(1f), color = Color.LightGray.copy(alpha = 0.5f))
+                HorizontalDivider(modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.outlineVariant)
+                Text(" OR WITH EMAIL ", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, letterSpacing = 1.sp)
+                HorizontalDivider(modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.outlineVariant)
             }
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -149,7 +159,6 @@ fun RegisterScreen(
             Spacer(modifier = Modifier.height(16.dp))
             AuthTextField("CONFIRM", viewModel.confirmPassword, { viewModel.confirmPassword = it }, "••••••••", Icons.Default.CheckCircle, isPassword = true)
 
-            // HIỂN THỊ LỖI (GIỮ NGUYÊN)
             viewModel.errorMessage?.let {
                 Text(
                     text = it,
@@ -161,23 +170,22 @@ fun RegisterScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // --- CHECKBOX (GIỮ NGUYÊN) ---
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Checkbox(
                     checked = isAgreed,
                     onCheckedChange = { isAgreed = it },
-                    colors = CheckboxDefaults.colors(checkedColor = AppNavy)
+                    colors = CheckboxDefaults.colors(checkedColor = MaterialTheme.colorScheme.primary)
                 )
                 Text(
                     text = buildAnnotatedString {
                         append("I agree to the ")
-                        withStyle(style = SpanStyle(color = AppNavy, fontWeight = FontWeight.Bold)) { append("Terms of Service") }
+                        withStyle(style = SpanStyle(color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)) { append("Terms of Service") }
                         append(" and\n")
-                        withStyle(style = SpanStyle(color = AppNavy, fontWeight = FontWeight.Bold)) { append("Privacy Policy") }
+                        withStyle(style = SpanStyle(color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)) { append("Privacy Policy") }
                         append(".")
                     },
                     fontSize = 13.sp,
-                    color = TextGray,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     lineHeight = 18.sp,
                     modifier = Modifier.clickable { isAgreed = !isAgreed }
                 )
@@ -196,12 +204,12 @@ fun RegisterScreen(
                 enabled = !viewModel.isLoading,
                 modifier = Modifier.fillMaxWidth().height(56.dp),
                 shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = AppNavy)
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
             ) {
                 if (viewModel.isLoading) {
-                    CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
+                    CircularProgressIndicator(color = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(24.dp))
                 } else {
-                    Text("Create Account", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
+                    Text("Create Account", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onPrimary)
                 }
             }
 
@@ -213,9 +221,9 @@ fun RegisterScreen(
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("Already have an account? ", color = TextGray, fontSize = 14.sp)
+                Text("Already have an account? ", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp)
                 TextButton(onClick = onSignInClick, contentPadding = PaddingValues(0.dp)) {
-                    Text("Sign In", color = AppNavy, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    Text("Sign In", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                 }
             }
         }
@@ -233,20 +241,22 @@ fun AuthTextField(
     keyboardType: KeyboardType = KeyboardType.Text
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
-        Text(text = label, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = AppNavy, letterSpacing = 1.sp)
+        Text(text = label, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground, letterSpacing = 1.sp)
         Spacer(modifier = Modifier.height(8.dp))
         TextField(
             value = value,
             onValueChange = onValueChange,
-            placeholder = { Text(placeholder, color = Color.Gray) },
-            leadingIcon = { Icon(imageVector = icon, contentDescription = null, tint = Color.Gray) },
+            placeholder = { Text(placeholder, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)) },
+            leadingIcon = { Icon(imageVector = icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)) },
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(12.dp),
             colors = TextFieldDefaults.colors(
-                focusedContainerColor = InputBgGray,
-                unfocusedContainerColor = InputBgGray,
+                focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
                 focusedIndicatorColor = Color.Transparent,
-                unfocusedIndicatorColor = Color.Transparent
+                unfocusedIndicatorColor = Color.Transparent,
+                focusedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                unfocusedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
             ),
             singleLine = true,
             visualTransformation = if (isPassword) PasswordVisualTransformation() else VisualTransformation.None,
@@ -260,4 +270,3 @@ fun AuthTextField(
 fun PreviewRegisterScreen() {
     RegisterScreen()
 }
-//

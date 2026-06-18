@@ -54,9 +54,9 @@ class AuthRepository {
     }
 
     suspend fun uploadUserAvatar(userId: String, imageFile: File): String = withContext(Dispatchers.IO) {
-        require(supabaseUrl.isNotBlank()) { "SUPABASE_URL is not configured" }
-        require(supabaseAnonKey.isNotBlank()) { "SUPABASE_ANON_KEY is not configured" }
-        require(bucketName.isNotBlank()) { "SUPABASE_BUCKET_NAME is not configured" }
+        if (supabaseUrl.isBlank() || supabaseAnonKey.isBlank() || bucketName.isBlank()) {
+            throw IllegalStateException("Supabase storage is not configured. Please check local.properties.")
+        }
 
         val objectPath = "user-avatars/$userId/${UUID.randomUUID()}.jpg"
         val uploadUrl = "$supabaseUrl/storage/v1/object/$bucketName/$objectPath"
@@ -64,8 +64,8 @@ class AuthRepository {
 
         val connection = java.net.URL(uploadUrl).openConnection() as java.net.HttpURLConnection
         try {
-            connection.connectTimeout = 15000 // 15 seconds
-            connection.readTimeout = 15000    // 15 seconds
+            connection.connectTimeout = 30000 // 30 seconds
+            connection.readTimeout = 30000    // 30 seconds
             connection.requestMethod = "POST"
             connection.doOutput = true
             connection.setRequestProperty("Authorization", "Bearer $supabaseAnonKey")
@@ -73,7 +73,12 @@ class AuthRepository {
             connection.setRequestProperty("Content-Type", "image/jpeg")
             connection.setRequestProperty("x-upsert", "true")
             
-            connection.outputStream.use { it.write(imageFile.readBytes()) }
+            // Sử dụng stream để tránh OutOfMemoryError
+            imageFile.inputStream().use { input ->
+                connection.outputStream.use { output ->
+                    input.copyTo(output)
+                }
+            }
 
             val responseCode = connection.responseCode
             if (responseCode !in 200..299) {
@@ -83,7 +88,7 @@ class AuthRepository {
             }
             publicUrl
         } catch (e: Exception) {
-            Log.e("SupabaseUpload", "Exception: ${e.message}")
+            Log.e("SupabaseUpload", "Upload error: ${e.message}")
             throw e
         } finally {
             connection.disconnect()

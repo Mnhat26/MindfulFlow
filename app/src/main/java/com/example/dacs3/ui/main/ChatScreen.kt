@@ -12,6 +12,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -118,19 +119,19 @@ fun GroupListScreen(
     }
 
     Scaffold(
-        containerColor = BgLight,
+        containerColor = MaterialTheme.colorScheme.background,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         floatingActionButton = {
-            FloatingActionButton(onClick = { showCreateDialog = true }, containerColor = MyMessageBlue, shape = RoundedCornerShape(16.dp)) {
-                Icon(Icons.Default.Add, contentDescription = null, tint = Color.White)
+            FloatingActionButton(onClick = { showCreateDialog = true }, containerColor = MaterialTheme.colorScheme.primary, shape = RoundedCornerShape(16.dp)) {
+                Icon(Icons.Default.Add, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimary)
             }
         }
     ) { padding ->
         Column(modifier = Modifier.padding(padding).fillMaxSize().padding(horizontal = 24.dp)) {
             Spacer(modifier = Modifier.height(16.dp))
             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-                IconButton(onClick = onMenuClick) { Icon(Icons.Default.Menu, contentDescription = "Menu", tint = AppNavy) }
-                Text(text = "Study Groups", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = AppNavy)
+                IconButton(onClick = onMenuClick) { Icon(Icons.Default.Menu, contentDescription = "Menu", tint = MaterialTheme.colorScheme.onBackground) }
+                Text(text = "Study Groups", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
                 Box(modifier = Modifier) {
                     UserAvatar(imageUrl = userAvatarUrl, initial = userAvatarInitial, modifier = Modifier.size(36.dp))
                 }
@@ -162,7 +163,7 @@ fun GroupListScreen(
 
         AlertDialog(
             onDismissRequest = { showCreateDialog = false },
-            title = { Text("Create New Group", fontWeight = FontWeight.Bold, color = AppNavy) },
+            title = { Text("Create New Group", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Group Name") }, modifier = Modifier.fillMaxWidth())
@@ -171,10 +172,10 @@ fun GroupListScreen(
                 }
             },
             confirmButton = {
-                Button(onClick = { onCreateGroup(name, goal, emails.split(",").map { it.trim() }.filter { it.isNotEmpty() }); showCreateDialog = false }, colors = ButtonDefaults.buttonColors(containerColor = AppNavy)) { Text("Create") }
+                Button(onClick = { onCreateGroup(name, goal, emails.split(",").map { it.trim() }.filter { it.isNotEmpty() }); showCreateDialog = false }, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)) { Text("Create") }
             },
             dismissButton = {
-                TextButton(onClick = { showCreateDialog = false }) { Text("Cancel", color = AppNavy) }
+                TextButton(onClick = { showCreateDialog = false }) { Text("Cancel", color = MaterialTheme.colorScheme.primary) }
             }
         )
     }
@@ -192,8 +193,8 @@ fun GroupItem(group: ChatGroup, onClick: () -> Unit) {
         GroupAvatar(imageUrl = group.avatarUrl, modifier = Modifier.size(64.dp))
         Spacer(modifier = Modifier.width(16.dp))
         Column {
-            Text(text = group.name, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = AppNavy)
-            Text(text = "Score: ${group.totalFocusMinutes} pts • ${group.members.size} members", fontSize = 12.sp, color = Color.Gray)
+            Text(text = group.name, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+            Text(text = "Score: ${group.totalFocusMinutes} pts • ${group.members.size} members", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
@@ -248,35 +249,35 @@ fun ChatRoomScreen(
 
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
-            containerColor = ChatBg,
+            containerColor = MaterialTheme.colorScheme.background,
             contentWindowInsets = WindowInsets(0, 0, 0, 0),
             topBar = {
                 TopAppBar(
                     windowInsets = WindowInsets(0, 0, 0, 0),
-                    colors = TopAppBarDefaults.topAppBarColors(containerColor = ChatBg),
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface),
                     title = {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             GroupAvatar(imageUrl = group.avatarUrl, modifier = Modifier.size(40.dp))
                             Spacer(modifier = Modifier.width(12.dp))
                             Column {
-                                Text(group.name, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = AppNavy, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                Text("${group.members.size} ACTIVE MINDS • ${group.totalFocusMinutes} PTS", fontSize = 11.sp, color = Color.Gray)
+                                Text(group.name, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                Text("${group.members.size} ACTIVE MINDS • ${group.totalFocusMinutes} PTS", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
                     },
-                    navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, tint = AppNavy) } },
+                    navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface) } },
                     actions = {
                         Box(modifier = Modifier.clickable { userAvatarPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }) {
                             UserAvatar(imageUrl = userAvatarUrl, initial = userAvatarInitial, modifier = Modifier.size(36.dp))
                         }
-                        IconButton(onClick = { showDetails = true }) { Icon(Icons.Default.MoreVert, contentDescription = "Group Details", tint = AppNavy) }
+                        IconButton(onClick = { showDetails = true }) { Icon(Icons.Default.MoreVert, contentDescription = "Group Details", tint = MaterialTheme.colorScheme.onSurface) }
                     }
                 )
             },
             bottomBar = { 
                 Column {
                     if (viewModel.isUploadingFile) {
-                        LinearProgressIndicator(modifier = Modifier.fillMaxWidth(), color = MyMessageBlue)
+                        LinearProgressIndicator(modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.primary)
                     }
                     ChatInputBar(
                         text = messageText, 
@@ -297,7 +298,7 @@ fun ChatRoomScreen(
                     reverseLayout = false
                 ) {
                     item {
-                        Text("TODAY", modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp), textAlign = TextAlign.Center, fontSize = 11.sp, color = Color.Gray, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                        Text("TODAY", modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp), textAlign = TextAlign.Center, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                     }
                     items(messages) { message ->
                         if (message.type == "SYSTEM") SystemMessage(message) else MessageBubble(
@@ -309,7 +310,7 @@ fun ChatRoomScreen(
                     }
                 }
                 viewModel.fileUploadStatus?.let {
-                    Text(it, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp), textAlign = TextAlign.Center, fontSize = 12.sp, color = Color.Gray)
+                    Text(it, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp), textAlign = TextAlign.Center, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
@@ -339,9 +340,9 @@ fun SharedTimerWidget(group: ChatGroup, viewModel: ChatViewModel, userId: String
     val userPresets by viewModel.userPresets.collectAsState()
 
     val bgColor = when (group.timerStatus) {
-        "START" -> Color(0xFFE8F5E9)
-        "BREAK" -> Color(0xFFFFF3E0)
-        else -> MyMessageBlue.copy(alpha = 0.05f)
+        "START" -> Color(0xFFE8F5E9).copy(alpha = if (isSystemInDarkTheme()) 0.2f else 1.0f)
+        "BREAK" -> Color(0xFFFFF3E0).copy(alpha = if (isSystemInDarkTheme()) 0.2f else 1.0f)
+        else -> MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
     }
 
     Surface(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), color = bgColor, shape = RoundedCornerShape(16.dp)) {
@@ -351,23 +352,23 @@ fun SharedTimerWidget(group: ChatGroup, viewModel: ChatViewModel, userId: String
                     "START" -> Icons.Default.Timer
                     "BREAK" -> Icons.Default.Coffee
                     else -> Icons.Default.HourglassEmpty
-                }, contentDescription = null, tint = AppNavy, modifier = Modifier.size(20.dp))
+                }, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(20.dp))
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
                     Text(text = when (group.timerStatus) {
                         "START" -> "FOCUS: ${group.currentPresetTitle}"
                         "BREAK" -> "BREAK TIME"
                         else -> "WAITING FOR LEADER"
-                    }, fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, color = AppNavy, letterSpacing = 0.5.sp)
-                    Text(text = viewModel.timerString, fontSize = 22.sp, fontWeight = FontWeight.Black, color = AppNavy)
+                    }, fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.onSurface, letterSpacing = 0.5.sp)
+                    Text(text = viewModel.timerString, fontSize = 22.sp, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface)
                 }
             }
 
             if (isLeader && (group.timerStatus == "WAITING" || group.timerStatus == "STOP")) {
-                Button(onClick = { showPresetDialog = true }, colors = ButtonDefaults.buttonColors(containerColor = AppNavy), shape = RoundedCornerShape(12.dp)) {
-                    Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(16.dp))
+                Button(onClick = { showPresetDialog = true }, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary), shape = RoundedCornerShape(12.dp)) {
+                    Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onPrimary)
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("START", fontWeight = FontWeight.Bold)
+                    Text("START", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimary)
                 }
             }
         }
@@ -407,32 +408,32 @@ fun ChatInputBar(
     onAttachMedia: () -> Unit = {},
     onAttachFile: () -> Unit = {}
 ) {
-    Surface(color = Color.White, shadowElevation = 8.dp, modifier = Modifier.fillMaxWidth()) {
+    Surface(color = MaterialTheme.colorScheme.surface, shadowElevation = 8.dp, modifier = Modifier.fillMaxWidth()) {
         if (isLocked) {
-            Box(modifier = Modifier.fillMaxWidth().background(Color(0xFFF5F5F5)).padding(vertical = 16.dp), contentAlignment = Alignment.Center) {
+            Box(modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceVariant).padding(vertical = 16.dp), contentAlignment = Alignment.Center) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Lock, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(14.dp))
+                    Icon(Icons.Default.Lock, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(14.dp))
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Phòng học đang trong giờ tập trung, chat sẽ mở lại khi hết giờ", color = Color.Gray, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                    Text("Phòng học đang trong giờ tập trung, chat sẽ mở lại khi hết giờ", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp, fontWeight = FontWeight.Medium)
                 }
             }
         } else {
             Row(modifier = Modifier.imePadding().padding(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onAttachMedia) {
-                    Icon(Icons.Outlined.Image, contentDescription = "Send image/video", tint = AppNavy)
+                    Icon(Icons.Outlined.Image, contentDescription = "Send image/video", tint = MaterialTheme.colorScheme.primary)
                 }
                 IconButton(onClick = onAttachFile) {
-                    Icon(Icons.Outlined.AttachFile, contentDescription = "Send file", tint = AppNavy)
+                    Icon(Icons.Outlined.AttachFile, contentDescription = "Send file", tint = MaterialTheme.colorScheme.primary)
                 }
-                Surface(modifier = Modifier.weight(1f).height(44.dp), shape = CircleShape, color = Color(0xFFF1F3F4)) {
+                Surface(modifier = Modifier.weight(1f).height(44.dp), shape = CircleShape, color = MaterialTheme.colorScheme.surfaceVariant) {
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 16.dp)) {
                         Box(modifier = Modifier.weight(1f)) {
-                            if (text.isEmpty()) Text("Type a message...", color = Color.Gray, fontSize = 14.sp)
+                            if (text.isEmpty()) Text("Type a message...", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp)
                             BasicTextField(
                                 value = text, 
                                 onValueChange = onValueChange, 
                                 modifier = Modifier.fillMaxWidth(), 
-                                textStyle = TextStyle(fontSize = 14.sp, color = MyMessageBlue),
+                                textStyle = TextStyle(fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant),
                                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
                                 keyboardActions = KeyboardActions(onSend = { if (text.isNotBlank()) onSend() }),
                                 singleLine = true
@@ -441,8 +442,8 @@ fun ChatInputBar(
                     }
                 }
                 Spacer(modifier = Modifier.width(8.dp))
-                IconButton(onClick = onSend, enabled = text.isNotBlank(), modifier = Modifier.size(44.dp).background(if (text.isNotBlank()) MyMessageBlue else Color.LightGray, CircleShape)) {
-                    Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+                IconButton(onClick = onSend, enabled = text.isNotBlank(), modifier = Modifier.size(44.dp).background(if (text.isNotBlank()) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant, CircleShape)) {
+                    Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(18.dp))
                 }
             }
         }
@@ -452,8 +453,8 @@ fun ChatInputBar(
 @Composable
 fun SystemMessage(message: ChatMessage) {
     Box(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
-        Surface(color = Color.Gray.copy(alpha = 0.1f), shape = RoundedCornerShape(12.dp)) {
-            Text(text = message.content, modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp), fontSize = 11.sp, color = Color.Gray, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic, textAlign = TextAlign.Center)
+        Surface(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f), shape = RoundedCornerShape(12.dp)) {
+            Text(text = message.content, modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp), fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic, textAlign = TextAlign.Center)
         }
     }
 }
@@ -491,12 +492,12 @@ fun MessageBubble(
                     text = message.senderName,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color.Gray,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(start = 4.dp, bottom = 2.dp)
                 )
             }
             Surface(
-                color = if (isMine) MyMessageBlue else OtherMessageGreen,
+                color = if (isMine) MaterialTheme.colorScheme.primary else OtherMessageGreen.copy(alpha = if (isSystemInDarkTheme()) 0.2f else 1.0f),
                 shape = RoundedCornerShape(
                     topStart = 16.dp,
                     topEnd = 16.dp,
@@ -506,7 +507,7 @@ fun MessageBubble(
             ) {
                 MessageContent(message = message, isMine = isMine)
             }
-            Text(text = timeString, fontSize = 9.sp, color = Color.Gray, modifier = Modifier.padding(top = 2.dp))
+            Text(text = timeString, fontSize = 9.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 2.dp))
         }
         if (isMine) {
             Spacer(modifier = Modifier.width(8.dp))
@@ -517,7 +518,7 @@ fun MessageBubble(
 
 @Composable
 fun MessageContent(message: ChatMessage, isMine: Boolean) {
-    val textColor = if (isMine) Color.White else MyMessageBlue
+    val textColor = if (isMine) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
     
     when (message.type) {
         "IMAGE" -> {
@@ -595,14 +596,14 @@ fun GroupDetailsPanel(
         if (uri != null) viewModel.updateGroupAvatar(uri.toTempImageFile(context))
     }
 
-    Surface(modifier = Modifier.fillMaxSize(), color = Color.White) {
+    Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
         Column(modifier = Modifier.fillMaxSize()) {
             Row(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = onClose) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = AppNavy) }
-                Text("Group Info", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = AppNavy, modifier = Modifier.weight(1f))
+                IconButton(onClick = onClose) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = MaterialTheme.colorScheme.onSurface) }
+                Text("Group Info", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
                 if (isLeader) {
                     TextButton(onClick = { if (isEditing) { viewModel.updateGroupInfo(editName, editGoal); isEditing = false } else isEditing = true }) {
-                        Text(if (isEditing) "Save" else "Edit", color = AppNavy, fontWeight = FontWeight.Bold)
+                        Text(if (isEditing) "Save" else "Edit", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -611,8 +612,8 @@ fun GroupDetailsPanel(
                 Box(modifier = Modifier.size(100.dp)) {
                     GroupAvatar(imageUrl = group.avatarUrl, modifier = Modifier.matchParentSize())
                     if (isLeader) {
-                        Surface(modifier = Modifier.align(Alignment.BottomEnd).size(32.dp).clickable { pickAvatarLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }, shape = CircleShape, color = AppNavy) {
-                            Box(contentAlignment = Alignment.Center) { Icon(Icons.Default.PhotoCamera, contentDescription = "Change avatar", tint = Color.White, modifier = Modifier.size(16.dp)) }
+                        Surface(modifier = Modifier.align(Alignment.BottomEnd).size(32.dp).clickable { pickAvatarLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }, shape = CircleShape, color = MaterialTheme.colorScheme.primary) {
+                            Box(contentAlignment = Alignment.Center) { Icon(Icons.Default.PhotoCamera, contentDescription = "Change avatar", tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(16.dp)) }
                         }
                     }
                 }
@@ -626,22 +627,22 @@ fun GroupDetailsPanel(
                     Spacer(modifier = Modifier.height(16.dp))
                     OutlinedTextField(value = editGoal, onValueChange = { editGoal = it }, label = { Text("Goal") }, modifier = Modifier.fillMaxWidth())
                 } else {
-                    Text(group.name, fontSize = 24.sp, fontWeight = FontWeight.ExtraBold, color = AppNavy, textAlign = TextAlign.Center)
-                    Text(group.goal, fontSize = 16.sp, color = Color.Gray, textAlign = TextAlign.Center)
+                    Text(group.name, fontSize = 24.sp, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.onSurface, textAlign = TextAlign.Center)
+                    Text(group.goal, fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
                     Spacer(modifier = Modifier.height(8.dp))
-                    Surface(color = AppNavy, shape = RoundedCornerShape(12.dp)) {
-                        Text("SCORE: ${group.totalFocusMinutes} PTS", modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp), color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Surface(color = MaterialTheme.colorScheme.primary, shape = RoundedCornerShape(12.dp)) {
+                        Text("SCORE: ${group.totalFocusMinutes} PTS", modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp), color = MaterialTheme.colorScheme.onPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     }
                 }
 
                 Spacer(modifier = Modifier.height(32.dp))
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Text("MEMBERS (${group.members.size})", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
-                    IconButton(onClick = { showAddMemberDialog = true }) { Icon(Icons.Default.PersonAdd, contentDescription = "Add", tint = AppNavy) }
+                    Text("MEMBERS (${group.members.size})", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    IconButton(onClick = { showAddMemberDialog = true }) { Icon(Icons.Default.PersonAdd, contentDescription = "Add", tint = MaterialTheme.colorScheme.primary) }
                 }
 
                 Spacer(modifier = Modifier.weight(1f))
-                Button(onClick = onLeaveOrDelete, modifier = Modifier.fillMaxWidth().height(56.dp).padding(bottom = 16.dp), shape = RoundedCornerShape(16.dp), colors = ButtonDefaults.buttonColors(containerColor = if (isLeader) Color.Red else Color.Gray)) {
+                Button(onClick = onLeaveOrDelete, modifier = Modifier.fillMaxWidth().height(56.dp).padding(bottom = 16.dp), shape = RoundedCornerShape(16.dp), colors = ButtonDefaults.buttonColors(containerColor = if (isLeader) Color.Red else MaterialTheme.colorScheme.outlineVariant)) {
                     Icon(if (isLeader) Icons.Filled.DeleteForever else Icons.AutoMirrored.Outlined.ExitToApp, contentDescription = null, tint = Color.White)
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(if (isLeader) "Disband Group" else "Leave Group", color = Color.White, fontWeight = FontWeight.Bold)
@@ -669,23 +670,23 @@ fun GroupDetailsPanel(
 
 @Composable
 fun GroupAvatar(imageUrl: String?, modifier: Modifier = Modifier) {
-    Surface(modifier = modifier, shape = CircleShape, color = Color(0xFFE0E0E0)) {
+    Surface(modifier = modifier, shape = CircleShape, color = MaterialTheme.colorScheme.surfaceVariant) {
         if (!imageUrl.isNullOrBlank()) {
             AsyncImage(model = imageUrl, contentDescription = null, modifier = Modifier.fillMaxSize().clip(CircleShape), contentScale = ContentScale.Crop)
         } else {
-            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) { Icon(Icons.Default.Groups, contentDescription = null, tint = Color.Gray, modifier = Modifier.padding(16.dp)) }
+            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) { Icon(Icons.Default.Groups, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(16.dp)) }
         }
     }
 }
 
 @Composable
 fun UserAvatar(imageUrl: String?, initial: String, modifier: Modifier = Modifier) {
-    Surface(modifier = modifier, shape = CircleShape, color = Color(0xFFBDBDBD)) {
+    Surface(modifier = modifier, shape = CircleShape, color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)) {
         if (!imageUrl.isNullOrBlank()) {
             AsyncImage(model = imageUrl, contentDescription = null, modifier = Modifier.fillMaxSize().clip(CircleShape), contentScale = ContentScale.Crop)
         } else {
             Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                Text(text = initial.ifBlank { "U" }, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                Text(text = initial.ifBlank { "U" }, color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp, fontWeight = FontWeight.Bold)
             }
         }
     }

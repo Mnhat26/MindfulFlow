@@ -1,9 +1,12 @@
 package com.example.dacs3.viewmodel
 
+import android.app.Application
+import android.media.RingtoneManager
 import androidx.compose.runtime.*
-import androidx.lifecycle.ViewModel
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.dacs3.data.AuthRepository
+import com.example.dacs3.data.PreferenceManager
 import com.example.dacs3.data.repository.HistoryRepository
 import com.example.dacs3.data.repository.PresetRepository
 import com.example.dacs3.data.repository.UserRepository
@@ -14,12 +17,13 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.File
 
-class FocusViewModel : ViewModel() {
+class FocusViewModel(application: Application) : AndroidViewModel(application) {
 
     private val presetRepository = PresetRepository()
     private val historyRepository = HistoryRepository()
     private val userRepository = UserRepository()
     private val authRepository = AuthRepository()
+    private val preferenceManager = PreferenceManager(application)
 
     private var timerJob: Job? = null
     private var secondsTracked = 0 
@@ -40,6 +44,12 @@ class FocusViewModel : ViewModel() {
         private set
 
     var totalDeepWorkHours by mutableIntStateOf(0)
+        private set
+
+    var currentStreak by mutableIntStateOf(0)
+        private set
+
+    var globalRank by mutableIntStateOf(0)
         private set
 
     var presetsList by mutableStateOf<List<TimerPreset>>(emptyList())
@@ -66,6 +76,39 @@ class FocusViewModel : ViewModel() {
     var isUploadingAvatar by mutableStateOf(false)
         private set
 
+    var isNotificationSoundEnabled by mutableStateOf(preferenceManager.isNotificationSoundEnabled)
+        private set
+
+    var selectedSoundUri by mutableStateOf(preferenceManager.selectedSoundUri)
+        private set
+
+    fun toggleNotificationSound(enabled: Boolean) {
+        isNotificationSoundEnabled = enabled
+        preferenceManager.isNotificationSoundEnabled = enabled
+    }
+
+    fun setSelectedSound(uri: String?) {
+        selectedSoundUri = uri
+        preferenceManager.selectedSoundUri = uri
+        // Phát thử âm thanh khi chọn
+        playNotificationSound()
+    }
+
+    private fun playNotificationSound() {
+        if (!isNotificationSoundEnabled) return
+        try {
+            val uri = if (selectedSoundUri != null) {
+                android.net.Uri.parse(selectedSoundUri)
+            } else {
+                RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+            }
+            val r = RingtoneManager.getRingtone(getApplication(), uri)
+            r.play()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
     init {
         listenUser()
         listenPresets()
@@ -79,6 +122,15 @@ class FocusViewModel : ViewModel() {
                 userTitle = userInfo.title
                 userAvatarUrl = userInfo.avatarUrl
                 userAvatarInitial = userInfo.fullName.trim().firstOrNull()?.uppercaseChar()?.toString() ?: "U"
+                
+                // Tính toán giờ làm việc sâu
+                totalDeepWorkHours = userInfo.totalFocusMinutes / 60
+                currentStreak = userInfo.currentStreak
+                
+                // Cập nhật Rank
+                viewModelScope.launch {
+                    globalRank = userRepository.getGlobalRank()
+                }
             },
             onError = { message -> errorMessage = message }
         )
@@ -116,7 +168,9 @@ class FocusViewModel : ViewModel() {
                     if (isFocusMode) {
                         secondsTracked++
                         if (secondsTracked >= 60) {
-                            userRepository.incrementFocusMinutes(1)
+                            viewModelScope.launch {
+                                userRepository.incrementFocusMinutes(1)
+                            }
                             secondsTracked = 0
                         }
                     }
@@ -137,6 +191,8 @@ class FocusViewModel : ViewModel() {
         timerJob?.cancel()
         timerJob = null
         secondsTracked = 0
+
+        playNotificationSound()
 
         if (isFocusMode) {
             val presetName = currentPreset?.title ?: "Focus Timer"
@@ -177,8 +233,8 @@ class FocusViewModel : ViewModel() {
         currentPreset = preset
         isFocusMode = true
         totalFocusSeconds = preset.focusMin * 60
-        // Tránh reset thời gian nếu timer đang chạy hoặc đã có tiến trình
-        if (!isRunning && timeLeft == 25 * 60) {
+        // Cập nhật timeLeft nếu timer đang không chạy
+        if (!isRunning) {
             timeLeft = totalFocusSeconds
         }
     }
@@ -202,7 +258,7 @@ class FocusViewModel : ViewModel() {
                 // 2. Cập nhật link vào Firestore
                 authRepository.updateUserAvatar(userId, url)
 //                errorMessage = "Cập nhật ảnh đại diện thành công!"
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
                 errorMessage = "Lỗi: ${e.message ?: "Không thể cập nhật ảnh đại diện"}"
                 e.printStackTrace()
             } finally {
